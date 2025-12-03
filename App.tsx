@@ -29,7 +29,32 @@ const App: React.FC = () => {
   const [kitContent, setKitContent] = useState("");
   const [isGeneratingKit, setIsGeneratingKit] = useState(false);
 
-  const hasApiKey = !!process.env.API_KEY;
+  // Safe check for API Key with Debugging
+  const hasApiKey = (() => {
+    let key = '';
+    try {
+      // @ts-ignore
+      if (typeof import.meta !== 'undefined' && import.meta.env) {
+        // @ts-ignore
+        key = import.meta.env.VITE_API_KEY;
+        if (key) console.log("API Key found in import.meta.env");
+      }
+    } catch (e) {}
+    
+    if (!key) {
+        try {
+            // @ts-ignore
+            if (typeof process !== 'undefined' && process.env) {
+                // @ts-ignore
+                key = process.env.API_KEY || process.env.VITE_API_KEY;
+                if (key) console.log("API Key found in process.env");
+            }
+        } catch (e) {}
+    }
+    
+    if (!key) console.warn("No API Key found. Checked import.meta.env.VITE_API_KEY and process.env.VITE_API_KEY");
+    return !!key;
+  })();
 
   // --- 1. DB INITIALIZATION ---
   useEffect(() => {
@@ -58,19 +83,45 @@ const App: React.FC = () => {
 
   const handleConnectDb = () => {
     try {
-      // Allow user to paste raw JSON or just the object content
-      const cleanInput = configInput.replace(/const firebaseConfig = /, '').replace(/;$/, '');
-      const config = JSON.parse(cleanInput);
+      // 1. Clean up the input string
+      // Remove "const firebaseConfig =" prefix, "export const", comments, and trailing semicolons
+      let cleanInput = configInput
+        .replace(/^(const|export const|var|let)\s+\w+\s*=\s*/, '') // Remove variable declaration
+        .replace(/\/\/.*$/gm, '') // Remove single line comments
+        .replace(/\/\*[\s\S]*?\*\//g, '') // Remove block comments
+        .replace(/;$/, '') // Remove trailing semicolon
+        .trim();
+
+      // 2. Parse the object
+      // JSON.parse is strict (requires quoted keys). Firebase console gives JS object (unquoted keys).
+      // We try JSON.parse first, then fallback to a safe Function evaluation for JS objects.
+      let config;
+      try {
+        config = JSON.parse(cleanInput);
+      } catch (jsonError) {
+        try {
+           // This evaluates the JS object string: "{ apiKey: '...' }" -> Object
+           config = new Function(`return ${cleanInput}`)();
+        } catch (funcError) {
+           throw new Error("Could not parse input.");
+        }
+      }
       
+      // 3. Basic Validation
+      if (!config || !config.apiKey || !config.projectId) {
+         throw new Error("Missing required Firebase fields (apiKey, projectId)");
+      }
+
       const success = initFirebase(config);
       if (success) {
         localStorage.setItem('firebase_config', JSON.stringify(config));
         setIsDbConnected(true);
       } else {
-        alert("Failed to initialize Firebase. Check config.");
+        alert("Failed to initialize Firebase. Check that your config object is valid.");
       }
     } catch (e) {
-      alert("Invalid JSON Format. Please paste the full firebaseConfig object.");
+      console.error(e);
+      alert("Invalid Format. Please copy the 'firebaseConfig' object exactly as shown in the Firebase Console.\n\nIt should look like:\n{\n  apiKey: \"...\",\n  authDomain: \"...\"\n}");
     }
   };
 
@@ -219,6 +270,7 @@ const App: React.FC = () => {
         <div className="bg-white p-8 rounded-sm shadow-md border-t-4 border-red-500 max-w-md text-center">
             <h2 className="text-xl font-bold mb-2">API Key Missing</h2>
             <p className="text-gray-600">Please provide a valid Google Gemini API Key in the environment variables.</p>
+            <p className="text-xs text-gray-400 mt-4">Required: VITE_API_KEY</p>
         </div>
       </div>
     );
@@ -240,26 +292,24 @@ const App: React.FC = () => {
 
                 <div className="space-y-4 mb-8">
                     <div className="bg-blue-50 border-l-4 border-blue-500 p-4">
-                        <h3 className="font-bold text-blue-900 text-sm mb-1 uppercase tracking-wide">How to get this?</h3>
-                        <ol className="list-decimal list-inside text-sm text-blue-800 space-y-1">
-                            <li>Go to <a href="https://console.firebase.google.com" target="_blank" className="underline font-bold">console.firebase.google.com</a> (It's free).</li>
-                            <li>Create a Project &rarr; Add Web App &rarr; Copy the <code>firebaseConfig</code> object.</li>
-                            <li>Create a <strong>Firestore Database</strong> in "Test Mode".</li>
-                            <li>Paste the config object below.</li>
-                        </ol>
+                        <h3 className="font-bold text-blue-900 text-sm mb-1 uppercase tracking-wide">1. Create App</h3>
+                        <p className="text-sm text-blue-800 mb-2">Click the <strong>Web Icon (&lt;/&gt;)</strong> in your Firebase Console to register an app and get the config.</p>
+                        
+                        <h3 className="font-bold text-blue-900 text-sm mb-1 uppercase tracking-wide">2. Create Database</h3>
+                        <p className="text-sm text-blue-800">Go to <strong>Build &rarr; Firestore Database</strong> and click "Create Database" (Start in <strong>Test Mode</strong>).</p>
                     </div>
 
                     <textarea
                         value={configInput}
                         onChange={(e) => setConfigInput(e.target.value)}
-                        placeholder={`{
+                        placeholder={`const firebaseConfig = {
   apiKey: "AIzaSy...",
   authDomain: "...",
   projectId: "...",
   storageBucket: "...",
   messagingSenderId: "...",
   appId: "..."
-}`}
+};`}
                         className="w-full h-64 p-4 font-mono text-xs bg-gray-900 text-green-400 rounded-sm border border-gray-300 focus:ring-2 focus:ring-[#86BC25] focus:outline-none"
                     />
                 </div>
