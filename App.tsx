@@ -1,14 +1,12 @@
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Job } from './types';
 import { searchAndParseJobs, analyzeJob, generateApplicationKit } from './services/geminiService';
-import { initFirebase, isFirebaseConfigured, subscribeToJobs, addOrUpdateJob, updateJobStatus, deleteJob, saveAnalysis } from './services/firebase';
-import { FirebaseConfig } from './constants';
+import { initFirebase, subscribeToJobs, addOrUpdateJob, updateJobStatus, deleteJob, saveAnalysis } from './services/firebase';
 import JobCard from './components/JobCard';
 import StatsPanel from './components/StatsPanel';
 import CoverLetterModal from './components/CoverLetterModal';
-import { Zap, AlertCircle, RefreshCw, Filter, Database, CloudLightning, Download, Upload, Settings } from 'lucide-react';
-import { USER_PROFILE } from './constants';
+import { Zap, RefreshCw, Filter, Database, CloudLightning, Settings, Briefcase, Search } from 'lucide-react';
 
 const App: React.FC = () => {
   // Navigation & Data
@@ -215,3 +213,221 @@ const App: React.FC = () => {
   });
 
   // --- CONFIG SCREEN (If no DB) ---
+  if (!hasApiKey) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-gray-50 p-4">
+        <div className="bg-white p-8 rounded-sm shadow-md border-t-4 border-red-500 max-w-md text-center">
+            <h2 className="text-xl font-bold mb-2">API Key Missing</h2>
+            <p className="text-gray-600">Please provide a valid Google Gemini API Key in the environment variables.</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isDbConnected) {
+    return (
+        <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4 font-sans">
+            <div className="bg-white p-8 rounded-sm shadow-xl w-full max-w-2xl border-t-4 border-[#86BC25]">
+                <div className="flex items-center gap-3 mb-6">
+                    <div className="p-3 bg-black text-white rounded-sm">
+                        <CloudLightning size={24} />
+                    </div>
+                    <div>
+                        <h1 className="text-2xl font-bold text-black uppercase tracking-tight">Connect Cloud Database</h1>
+                        <p className="text-gray-500 text-sm">Vyom's Job Agent requires a Firebase Cloud Firestore database to ensure data is never lost across devices.</p>
+                    </div>
+                </div>
+
+                <div className="space-y-4 mb-8">
+                    <div className="bg-blue-50 border-l-4 border-blue-500 p-4">
+                        <h3 className="font-bold text-blue-900 text-sm mb-1 uppercase tracking-wide">How to get this?</h3>
+                        <ol className="list-decimal list-inside text-sm text-blue-800 space-y-1">
+                            <li>Go to <a href="https://console.firebase.google.com" target="_blank" className="underline font-bold">console.firebase.google.com</a> (It's free).</li>
+                            <li>Create a Project &rarr; Add Web App &rarr; Copy the <code>firebaseConfig</code> object.</li>
+                            <li>Create a <strong>Firestore Database</strong> in "Test Mode".</li>
+                            <li>Paste the config object below.</li>
+                        </ol>
+                    </div>
+
+                    <textarea
+                        value={configInput}
+                        onChange={(e) => setConfigInput(e.target.value)}
+                        placeholder={`{
+  apiKey: "AIzaSy...",
+  authDomain: "...",
+  projectId: "...",
+  storageBucket: "...",
+  messagingSenderId: "...",
+  appId: "..."
+}`}
+                        className="w-full h-64 p-4 font-mono text-xs bg-gray-900 text-green-400 rounded-sm border border-gray-300 focus:ring-2 focus:ring-[#86BC25] focus:outline-none"
+                    />
+                </div>
+
+                <button
+                    onClick={handleConnectDb}
+                    className="w-full py-4 bg-black hover:bg-[#86BC25] text-white hover:text-black font-bold uppercase tracking-widest transition-all rounded-sm shadow-lg flex items-center justify-center gap-2"
+                >
+                    Initialize System <Database size={18} />
+                </button>
+            </div>
+        </div>
+    );
+  }
+
+  // --- MAIN DASHBOARD ---
+  return (
+    <div className="min-h-screen bg-[#f3f4f6] font-sans text-gray-900 pb-20">
+      {/* Header */}
+      <header className="bg-white border-b border-gray-200 sticky top-0 z-30 shadow-sm">
+        <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+             <div className="bg-black p-2 rounded-sm text-white">
+                <Zap size={20} fill="currentColor" className="text-[#86BC25]" />
+             </div>
+             <div>
+                <h1 className="text-lg font-extrabold uppercase tracking-tighter leading-none">Vyom's Job Agent</h1>
+                <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">Cloud Connected</p>
+             </div>
+          </div>
+          
+          <div className="flex items-center gap-4">
+            {analyzingCount > 0 && (
+                <div className="flex items-center gap-2 px-3 py-1 bg-blue-50 text-blue-700 rounded-full text-xs font-bold uppercase tracking-wide border border-blue-100 animate-pulse">
+                    <RefreshCw size={12} className="animate-spin" />
+                    Analyzing {analyzingCount} roles...
+                </div>
+            )}
+            
+            <button 
+                onClick={fetchJobs}
+                disabled={isFetching}
+                className={`flex items-center gap-2 px-4 py-2 text-xs font-bold uppercase tracking-widest rounded-sm transition-all ${isFetching ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-black text-white hover:bg-[#86BC25] hover:text-black shadow-md'}`}
+            >
+                <Search size={14} />
+                {isFetching ? 'Scouting...' : 'Scout Now'}
+            </button>
+            
+            <button 
+                onClick={() => {
+                    if(confirm("Disconnect Database?")) {
+                        localStorage.removeItem('firebase_config');
+                        setIsDbConnected(false);
+                    }
+                }}
+                className="p-2 text-gray-400 hover:text-black transition-colors"
+                title="Disconnect DB"
+            >
+                <Settings size={18} />
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <main className="max-w-7xl mx-auto px-4 py-8 grid grid-cols-12 gap-8">
+        {/* Left Column: Stats & Filters */}
+        <div className="col-span-12 lg:col-span-3 space-y-6">
+            <StatsPanel jobs={allJobs} />
+            
+            <div className="bg-white p-6 rounded-sm border border-gray-200 shadow-sm">
+                <div className="flex items-center gap-2 mb-4 text-xs font-bold text-gray-400 uppercase tracking-widest">
+                    <Filter size={14} /> Filters
+                </div>
+                
+                <div className="space-y-4">
+                    <div>
+                        <label className="block text-xs font-bold text-black uppercase mb-2">Location</label>
+                        <div className="flex flex-wrap gap-2">
+                            {filterOptions.map(city => (
+                                <button
+                                    key={city}
+                                    onClick={() => setCityFilter(city)}
+                                    className={`px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider border rounded-sm transition-colors ${cityFilter === city ? 'bg-black text-white border-black' : 'bg-white text-gray-600 border-gray-200 hover:border-gray-400'}`}
+                                >
+                                    {city}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    <div>
+                        <label className="block text-xs font-bold text-black uppercase mb-2">Sort By</label>
+                        <div className="flex bg-gray-100 p-1 rounded-sm">
+                             <button 
+                                onClick={() => setSortBy('Score')}
+                                className={`flex-1 py-1.5 text-[10px] font-bold uppercase tracking-wider rounded-sm transition-all ${sortBy === 'Score' ? 'bg-white text-black shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                             >
+                                Score
+                             </button>
+                             <button 
+                                onClick={() => setSortBy('Date')}
+                                className={`flex-1 py-1.5 text-[10px] font-bold uppercase tracking-wider rounded-sm transition-all ${sortBy === 'Date' ? 'bg-white text-black shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                             >
+                                Date
+                             </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {/* Right Column: Job List */}
+        <div className="col-span-12 lg:col-span-9">
+            {/* Tabs */}
+            <div className="flex border-b border-gray-200 mb-6">
+                <button
+                    onClick={() => setActiveTab('new')}
+                    className={`px-6 py-3 text-sm font-bold uppercase tracking-wide border-b-2 transition-colors flex items-center gap-2 ${activeTab === 'new' ? 'border-[#86BC25] text-black' : 'border-transparent text-gray-400 hover:text-gray-600'}`}
+                >
+                    <Briefcase size={16} />
+                    New Opportunities ({allJobs.filter(j => j.status !== 'applied').length})
+                </button>
+                <button
+                    onClick={() => setActiveTab('applied')}
+                    className={`px-6 py-3 text-sm font-bold uppercase tracking-wide border-b-2 transition-colors flex items-center gap-2 ${activeTab === 'applied' ? 'border-[#86BC25] text-black' : 'border-transparent text-gray-400 hover:text-gray-600'}`}
+                >
+                    <div className="w-4 h-4 bg-gray-200 rounded-full flex items-center justify-center text-[10px]">
+                        {allJobs.filter(j => j.status === 'applied').length}
+                    </div>
+                    Applied
+                </button>
+            </div>
+
+            {/* List */}
+            <div className="space-y-4">
+                {sortedJobs.length === 0 ? (
+                    <div className="text-center py-20 bg-white border border-gray-200 rounded-sm">
+                        <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-4 text-gray-300">
+                            <Briefcase size={32} />
+                        </div>
+                        <h3 className="text-lg font-bold text-black uppercase tracking-tight">No Jobs Found</h3>
+                        <p className="text-gray-500 text-sm mt-2">Try adjusting your filters or running a new scout.</p>
+                    </div>
+                ) : (
+                    sortedJobs.map(job => (
+                        <JobCard 
+                            key={job.id} 
+                            job={job} 
+                            onGenerateKit={handleDraftKit}
+                            onToggleStatus={toggleJobStatus}
+                            onDelete={handleDelete}
+                        />
+                    ))
+                )}
+            </div>
+        </div>
+      </main>
+
+      {/* Modal */}
+      <CoverLetterModal 
+        isOpen={modalOpen} 
+        onClose={() => setModalOpen(false)} 
+        job={selectedJob}
+        content={kitContent}
+        isGenerating={isGeneratingKit}
+      />
+    </div>
+  );
+};
+
+export default App;
