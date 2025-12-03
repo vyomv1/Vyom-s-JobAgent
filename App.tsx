@@ -29,7 +29,28 @@ const App: React.FC = () => {
   const [kitContent, setKitContent] = useState("");
   const [isGeneratingKit, setIsGeneratingKit] = useState(false);
 
-  const hasApiKey = !!process.env.API_KEY;
+  // Safe check for API Key
+  const hasApiKey = (() => {
+    let key = '';
+    try {
+      // @ts-ignore
+      if (typeof import.meta !== 'undefined' && import.meta.env) {
+        // @ts-ignore
+        key = import.meta.env.VITE_API_KEY;
+      }
+    } catch (e) {}
+    
+    if (!key) {
+        try {
+            // @ts-ignore
+            if (typeof process !== 'undefined' && process.env) {
+                // @ts-ignore
+                key = process.env.API_KEY || process.env.VITE_API_KEY;
+            }
+        } catch (e) {}
+    }
+    return !!key;
+  })();
 
   // --- 1. DB INITIALIZATION ---
   useEffect(() => {
@@ -219,6 +240,7 @@ const App: React.FC = () => {
         <div className="bg-white p-8 rounded-sm shadow-md border-t-4 border-red-500 max-w-md text-center">
             <h2 className="text-xl font-bold mb-2">API Key Missing</h2>
             <p className="text-gray-600">Please provide a valid Google Gemini API Key in the environment variables.</p>
+            <p className="text-xs text-gray-400 mt-4">Required: VITE_API_KEY</p>
         </div>
       </div>
     );

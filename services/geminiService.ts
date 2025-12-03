@@ -3,10 +3,48 @@ import { GoogleGenAI, Type, GenerateContentResponse } from "@google/genai";
 import { Job, JobAnalysis, UserProfile } from "../types";
 import { SYSTEM_INSTRUCTION, USER_PROFILE } from "../constants";
 
-// Helper to get client
+// Helper to get client safely in Vite/Vercel environment
+const getApiKey = () => {
+  let key = '';
+
+  // 1. Try Vite standard (import.meta.env) safely
+  try {
+    // @ts-ignore
+    if (typeof import.meta !== 'undefined' && import.meta.env) {
+      // @ts-ignore
+      key = import.meta.env.VITE_API_KEY;
+    }
+  } catch (e) {
+    // ignore error if import.meta is not supported
+  }
+
+  // 2. Fallback to process.env (Node/Vercel standard)
+  if (!key) {
+    try {
+      // @ts-ignore
+      if (typeof process !== 'undefined' && process.env) {
+        // @ts-ignore
+        key = process.env.API_KEY || process.env.VITE_API_KEY;
+      }
+    } catch (e) {
+      // ignore error if process is not defined
+    }
+  }
+
+  if (!key) {
+    console.error("API Key missing. Environment dump:", { 
+      // @ts-ignore
+      vite: typeof import.meta !== 'undefined' ? import.meta.env : 'undefined', 
+      // @ts-ignore
+      process: typeof process !== 'undefined' ? 'defined' : 'undefined' 
+    });
+    throw new Error("API Key not found. Please set VITE_API_KEY in your environment.");
+  }
+  return key;
+};
+
 const getClient = () => {
-  const apiKey = process.env.API_KEY;
-  if (!apiKey) throw new Error("API Key not found");
+  const apiKey = getApiKey();
   return new GoogleGenAI({ apiKey });
 };
 
