@@ -209,11 +209,11 @@ const App: React.FC = () => {
         
         {/* WELCOME HEADER - CENTERED WITH SCOUT BUTTON */}
         {currentView === ViewState.DASHBOARD && (
-            <div className="mb-10 pt-10 animate-in fade-in slide-in-from-bottom-4 duration-500 text-center max-w-2xl mx-auto flex flex-col items-center">
+            <div className="mb-20 pt-10 animate-in fade-in slide-in-from-bottom-4 duration-500 text-center max-w-2xl mx-auto flex flex-col items-center">
                 <h1 className="text-4xl font-normal text-[#202124] tracking-tight">
                     Welcome back, <span className="font-bold">Vyom.</span>
                 </h1>
-                <p className="text-[#5F6368] mt-2 text-lg mb-10">
+                <p className="text-[#5F6368] mt-2 text-lg mb-4">
                     You have <span className="font-bold text-[#1a73e8]">{allJobs.filter(j => j.status === 'saved').length} saved jobs</span> and <span className="font-bold text-[#137333]">{allJobs.filter(j => j.status === 'interview').length} active interviews</span>.
                 </p>
 
