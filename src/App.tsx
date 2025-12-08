@@ -9,7 +9,7 @@ import StatsPanel from './components/StatsPanel';
 import KanbanBoard from './components/KanbanBoard';
 import CVEditor from './components/CVEditor';
 import JobDetailModal from './components/JobDetailModal';
-import { Bot, Layout, Columns, FileText, CheckCircle2, Filter, Sparkles, Plus, Search, ArrowDownUp } from 'lucide-react';
+import { Bot, Layout, Columns, FileText, CheckCircle2, Filter, Sparkles, Plus, Search, ArrowDownUp, Globe } from 'lucide-react';
 
 const App: React.FC = () => {
   // Navigation & Data
@@ -220,7 +220,7 @@ const App: React.FC = () => {
                 <button
                     onClick={fetchJobs}
                     disabled={isFetching}
-                    className="group relative px-6 py-3 bg-white border border-[#DADCE0] text-[#5F6368] rounded-full font-bold text-sm shadow-sm hover:bg-[#F1F3F4] hover:text-[#202124] active:scale-95 transition-all flex items-center gap-2"
+                    className="group relative px-6 py-3 bg-white border border-[#DADCE0] text-[#5F6368] rounded-full font-bold text-sm shadow-sm hover:bg-[#F1F3F4] hover:text-[#202124] active:scale-95 transition-all flex items-center gap-2 mb-20"
                 >
                     {isFetching ? (
                         <span className="flex items-center gap-2">
@@ -280,6 +280,21 @@ const App: React.FC = () => {
                             selectedIndustry={industryFilter}
                             onSelectIndustry={setIndustryFilter}
                         />
+
+                        <div className="h-px bg-[#DADCE0] my-6"></div>
+                        
+                        <div>
+                            <h3 className="text-xs font-bold text-[#70757A] uppercase tracking-wide mb-3 flex items-center gap-2">
+                                <span className="w-1.5 h-1.5 rounded-full bg-[#34A853]"></span> Active Sources
+                            </h3>
+                            <div className="flex flex-wrap gap-2">
+                                {['LinkedIn', 'Glassdoor', 'Indeed', 'Otta', 'Reed', 'TotalJobs', 'Behance'].map(p => (
+                                    <span key={p} className="px-2.5 py-1.5 bg-white border border-[#DADCE0] rounded-lg text-[11px] font-bold text-[#5F6368] shadow-sm cursor-default hover:border-[#202124] transition-colors">
+                                        {p}
+                                    </span>
+                                ))}
+                            </div>
+                        </div>
                     </div>
                </div>
             </div>
