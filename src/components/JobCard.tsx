@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Job } from '../types';
 import { CheckCircle2, AlertTriangle, Briefcase, MapPin, ExternalLink, FileText, TrendingUp, Trash2, Clock, Zap, Bookmark, Archive, ArrowRight, ArrowLeft } from 'lucide-react';

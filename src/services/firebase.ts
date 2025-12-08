@@ -8,26 +8,20 @@ let db: Firestore | null = null;
 
 export const initFirebase = (config: FirebaseConfig) => {
   try {
-    // 1. Validate Config for Firestore
     if (!config.projectId) {
-      console.error("Firebase Config missing 'projectId'. Firestore requires this field.");
+      console.error("Firebase Config missing 'projectId'.");
       return false;
     }
-
-    // 2. Initialize App (Idempotent check)
     if (!getApps().length) {
       app = initializeApp(config);
     } else {
       app = getApp();
     }
-
-    // 3. Initialize Firestore
     if (app) {
       db = getFirestore(app);
       return true;
     }
     return false;
-
   } catch (e) {
     console.error("Firebase initialization failed:", e);
     return false;
@@ -36,26 +30,20 @@ export const initFirebase = (config: FirebaseConfig) => {
 
 export const isFirebaseConfigured = () => !!db;
 
-// Sanitize string for Doc ID
 const getDocId = (job: Job) => {
-  // Create a deterministic ID based on Title + Company to prevent duplicates
-  // e.g. "seniorux_google"
   const raw = `${job.title}_${job.company}`.toLowerCase().replace(/[^a-z0-9]/g, '_');
-  return raw.substring(0, 100); // Firestore max ID length
+  return raw.substring(0, 100); 
 };
 
 export const subscribeToJobs = (onData: (jobs: Job[]) => void) => {
   if (!db) return () => {};
-  
   try {
     const colRef = collection(db, "jobs");
-    // Real-time listener
     return onSnapshot(colRef, (snapshot) => {
       const jobs: Job[] = [];
       snapshot.forEach((doc) => {
         jobs.push(doc.data() as Job);
       });
-      // Sort logic handled in UI, just return raw data
       onData(jobs);
     }, (error) => {
       console.error("Firestore subscription error:", error);
@@ -71,10 +59,7 @@ export const addOrUpdateJob = async (job: Job) => {
   try {
     const docId = getDocId(job);
     const docRef = doc(db, "jobs", docId);
-    
-    // Use merge: true so we don't overwrite existing analysis if we just re-scouted the basic info
     const jobWithId = { ...job, id: docId };
-    
     await setDoc(docRef, jobWithId, { merge: true });
   } catch (e) {
     console.error("Error adding job:", e);
