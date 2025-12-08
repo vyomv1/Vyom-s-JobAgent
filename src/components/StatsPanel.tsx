@@ -5,11 +5,21 @@ import { Job } from '../types';
 
 interface StatsPanelProps {
   jobs: Job[];
+  selectedIndustry: string | null;
+  onSelectIndustry: (industry: string | null) => void;
 }
 
-const COLORS = ['#0B57D0', '#3b82f6', '#60a5fa', '#93c5fd', '#bfdbfe', '#dbeafe']; 
+// Google Brand Colors
+const COLORS = [
+  '#4285F4', // Blue
+  '#DB4437', // Red
+  '#F4B400', // Yellow
+  '#0F9D58', // Green
+  '#AB47BC', // Purple
+  '#00ACC1'  // Cyan
+];
 
-const StatsPanel: React.FC<StatsPanelProps> = ({ jobs }) => {
+const StatsPanel: React.FC<StatsPanelProps> = ({ jobs, selectedIndustry, onSelectIndustry }) => {
   const getIndustry = (job: Job): string => {
     if (job.analysis?.industry && job.analysis.industry !== "Other") {
         return job.analysis.industry;
@@ -39,15 +49,45 @@ const StatsPanel: React.FC<StatsPanelProps> = ({ jobs }) => {
   if (totalJobs === 0) return null;
 
   return (
-    <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm">
-      <h3 className="text-sm font-semibold text-slate-900 mb-6 uppercase tracking-wide">Market Breakdown</h3>
+    <div className="bg-[#F1F3F4] rounded-2xl">
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-xs font-bold text-[#70757A] uppercase tracking-wide">Market Breakdown</h3>
+        {selectedIndustry && (
+            <button 
+                onClick={() => onSelectIndustry(null)}
+                className="text-[10px] font-bold text-[#1a73e8] hover:bg-white px-2 py-1 rounded-md transition-colors"
+            >
+                CLEAR
+            </button>
+        )}
+      </div>
       
-      <div className="h-[160px] relative mb-6">
+      <div className="h-[180px] relative mb-6 cursor-pointer">
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
-            <Pie data={data} cx="50%" cy="50%" innerRadius={40} outerRadius={60} fill="#8884d8" paddingAngle={4} dataKey="value" stroke="none" cornerRadius={6}>
+            <Pie 
+                data={data} 
+                cx="50%" 
+                cy="50%" 
+                innerRadius={50} 
+                outerRadius={70} 
+                paddingAngle={4} 
+                dataKey="value" 
+                stroke="none" 
+                cornerRadius={4}
+                onClick={(data) => {
+                    const newSelection = selectedIndustry === data.name ? null : data.name;
+                    onSelectIndustry(newSelection);
+                }}
+            >
               {data.map((entry, index) => (
-                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                <Cell 
+                    key={`cell-${index}`} 
+                    fill={COLORS[index % COLORS.length]} 
+                    opacity={selectedIndustry && selectedIndustry !== entry.name ? 0.3 : 1}
+                    className="transition-all duration-300 outline-none"
+                    style={{ outline: 'none' }}
+                />
               ))}
             </Pie>
             <Tooltip 
@@ -56,18 +96,31 @@ const StatsPanel: React.FC<StatsPanelProps> = ({ jobs }) => {
             />
           </PieChart>
         </ResponsiveContainer>
+        
+        {/* Center Text */}
+        <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+             <span className="text-3xl font-bold text-[#202124]">{selectedIndustry ? data.find(d => d.name === selectedIndustry)?.value : totalJobs}</span>
+             <span className="text-[10px] uppercase font-bold text-[#5F6368]">{selectedIndustry ? 'Jobs' : 'Total'}</span>
+        </div>
       </div>
       
-      <div className="space-y-3">
-        {data.map((entry, index) => (
-          <div key={entry.name} className="flex items-center justify-between text-xs">
-             <div className="flex items-center gap-3">
-               <div className="w-3 h-3 rounded-full" style={{ backgroundColor: COLORS[index % COLORS.length] }}></div>
-               <span className="font-semibold text-slate-600">{entry.name}</span>
-             </div>
-             <span className="font-bold text-slate-900 bg-gray-100 px-2 py-0.5 rounded-md">{entry.value}</span>
-          </div>
-        ))}
+      <div className="space-y-2">
+        {data.map((entry, index) => {
+          const isSelected = selectedIndustry === entry.name;
+          return (
+            <div 
+                key={entry.name} 
+                onClick={() => onSelectIndustry(isSelected ? null : entry.name)}
+                className={`flex items-center justify-between text-xs cursor-pointer p-2 rounded-lg transition-colors ${isSelected ? 'bg-white shadow-sm' : 'hover:bg-white/50'}`}
+            >
+               <div className="flex items-center gap-3">
+                 <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: COLORS[index % COLORS.length] }}></div>
+                 <span className={`font-semibold ${isSelected ? 'text-[#202124]' : 'text-[#5F6368]'}`}>{entry.name}</span>
+               </div>
+               <span className="font-bold text-[#202124]">{entry.value}</span>
+            </div>
+          );
+        })}
       </div>
     </div>
   );

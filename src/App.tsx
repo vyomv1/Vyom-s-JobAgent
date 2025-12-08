@@ -9,7 +9,7 @@ import StatsPanel from './components/StatsPanel';
 import KanbanBoard from './components/KanbanBoard';
 import CVEditor from './components/CVEditor';
 import JobDetailModal from './components/JobDetailModal';
-import { Zap, Layout, Columns, FileText, CheckCircle2, Filter, Sparkles, Plus } from 'lucide-react';
+import { Bot, Layout, Columns, FileText, CheckCircle2, Filter, Sparkles, Plus, Search } from 'lucide-react';
 
 const App: React.FC = () => {
   // Navigation & Data
@@ -24,6 +24,7 @@ const App: React.FC = () => {
   
   // Filter & Sort
   const [cityFilter, setCityFilter] = useState<string>('All');
+  const [industryFilter, setIndustryFilter] = useState<string | null>(null);
 
   // Status
   const [isFetching, setIsFetching] = useState(false);
@@ -146,28 +147,41 @@ const App: React.FC = () => {
     if (activeTab === 'archived') return status === 'archived';
     return true;
   }).filter(j => {
-    if (cityFilter !== 'All') {
-        const loc = j.location.toLowerCase();
-        if (cityFilter === 'Other') return !['edinburgh', 'glasgow', 'remote', 'london', 'manchester'].some(s => loc.includes(s));
-        return loc.includes(cityFilter.toLowerCase());
+    const locMatch = cityFilter === 'All' ? true : (cityFilter === 'Other' ? !['edinburgh', 'glasgow', 'remote', 'london', 'manchester'].some(s => j.location.toLowerCase().includes(s)) : j.location.toLowerCase().includes(cityFilter.toLowerCase()));
+    if (!locMatch) return false;
+    
+    // Industry Filter
+    if (industryFilter) {
+        const ind = j.analysis?.industry || 'Tech';
+        // Simple mapping match
+        if (ind !== industryFilter) {
+             const text = (j.company + " " + j.title + " " + (j.summary || "")).toLowerCase();
+             let calculatedIndustry = 'Tech';
+             if (text.match(/bank|finance|wealth|fintech/)) calculatedIndustry = 'Fintech';
+             else if (text.match(/insurance|underwrit/)) calculatedIndustry = 'Insurance';
+             else if (text.match(/gov|public|council|nhs/)) calculatedIndustry = 'Public Sector';
+             else if (text.match(/agency|studio/)) calculatedIndustry = 'Agency';
+             
+             if (calculatedIndustry !== industryFilter) return false;
+        }
     }
     return true;
   });
 
   return (
-    <div className="min-h-screen bg-[#FFF8F6] text-[#2D1810] font-sans pb-20 selection:bg-[#FFDBC8] selection:text-[#2D1810]">
+    <div className="min-h-screen bg-[#F0F2F5] text-[#202124] font-sans pb-20 selection:bg-[#E8F0FE] selection:text-[#1a73e8]">
       
       {/* FLOATING HEADER */}
       <div className="sticky top-4 z-40 px-4 mb-4 flex justify-center">
           <header className="bg-white/90 backdrop-blur-xl border border-white/40 rounded-full shadow-lg elevation-1 py-2 px-6 w-full max-w-2xl flex items-center justify-between transition-all">
              <div className="flex items-center gap-3">
-                 <div className="bg-[#D97736] p-2 rounded-full text-white shadow-sm">
-                     <Zap size={20} fill="currentColor" />
+                 <div className="bg-[#1a73e8] p-2 rounded-full text-white shadow-sm">
+                     <Bot size={20} fill="none" />
                  </div>
-                 <span className="font-bold text-lg text-[#2D1810]">Job Agent</span>
+                 <span className="font-bold text-lg text-[#202124]">Vyom's Job Agent</span>
              </div>
 
-             <nav className="flex items-center gap-1 bg-[#FDF2EC] p-1 rounded-full">
+             <nav className="flex items-center gap-1 bg-[#F1F3F4] p-1 rounded-full">
                  {[
                    { id: ViewState.DASHBOARD, label: 'Dashboard', icon: Layout },
                    { id: ViewState.KANBAN, label: 'Pipeline', icon: Columns },
@@ -176,7 +190,7 @@ const App: React.FC = () => {
                    <button 
                      key={item.id}
                      onClick={() => setCurrentView(item.id)} 
-                     className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-bold transition-all duration-300 ${currentView === item.id ? 'bg-[#2D1810] text-white shadow-md' : 'text-[#5D4037] hover:text-[#2D1810] hover:bg-white/50'}`}
+                     className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-bold transition-all duration-300 ${currentView === item.id ? 'bg-[#202124] text-white shadow-md' : 'text-[#5F6368] hover:text-[#202124] hover:bg-white/50'}`}
                    >
                       <item.icon size={16} />
                       <span className="hidden sm:inline">{item.label}</span>
@@ -186,22 +200,33 @@ const App: React.FC = () => {
           </header>
       </div>
 
-      <main className="max-w-[1600px] mx-auto px-6 mt-6">
+      <main className="max-w-[1600px] mx-auto px-6 mt-8">
         
+        {/* WELCOME HEADER */}
+        {currentView === ViewState.DASHBOARD && (
+            <div className="mb-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                <h1 className="text-4xl font-normal text-[#202124] tracking-tight">
+                    Welcome back, <span className="font-bold">Vyom.</span>
+                </h1>
+                <p className="text-[#5F6368] mt-2 text-lg">
+                    You have <span className="font-bold text-[#1a73e8]">{allJobs.filter(j => j.status === 'saved').length} saved jobs</span> and <span className="font-bold text-[#137333]">{allJobs.filter(j => j.status === 'interview').length} active interviews</span>.
+                </p>
+            </div>
+        )}
+
         {currentView === ViewState.DASHBOARD && (
         <div className="grid grid-cols-12 gap-8 items-start relative">
-            {/* SIDEBAR FILTER PANEL */}
+            {/* SIDEBAR FILTER PANEL - DIFFERENTIATED UI */}
             <div className="col-span-12 lg:col-span-3">
-               {/* This div acts as the sticky container */}
                <div className="sticky top-28 space-y-6">
-                    <div className="bg-[#FDF2EC] p-6 rounded-[28px] border border-[#EFEBE9]">
-                        <div className="flex items-center gap-2 mb-6">
-                            <Filter size={20} className="text-[#5D4037]" />
-                            <span className="text-sm font-bold text-[#5D4037] uppercase tracking-wider">Filters</span>
+                    <div className="bg-[#F1F3F4] p-6 rounded-[28px] border border-white shadow-sm ring-1 ring-[#DADCE0]/50">
+                        <div className="flex items-center gap-2 mb-6 text-[#5F6368]">
+                            <Filter size={20} />
+                            <span className="text-sm font-bold uppercase tracking-wider">Smart Filters</span>
                         </div>
                         
                         <div className="space-y-4">
-                            <p className="text-xs font-bold text-[#A1887F] ml-1 uppercase">Location</p>
+                            <p className="text-xs font-bold text-[#70757A] ml-1 uppercase">Location</p>
                             <div className="flex flex-wrap gap-2">
                                 {filterOptions.map(city => {
                                     const count = locationCounts[city] || 0;
@@ -211,17 +236,21 @@ const App: React.FC = () => {
                                         <button 
                                             key={city} 
                                             onClick={() => setCityFilter(city)} 
-                                            className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all flex items-center gap-2 border ${isActive ? 'bg-[#D97736] text-white border-transparent shadow-sm' : 'bg-white text-[#5D4037] border-[#EFEBE9] hover:border-[#D7CCC8]'}`}
+                                            className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all flex items-center gap-2 border ${isActive ? 'bg-[#202124] text-white border-transparent shadow-sm' : 'bg-white text-[#5F6368] border-[#DADCE0] hover:border-[#202124]'}`}
                                         >
-                                            {city} <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${isActive ? 'bg-white/20' : 'bg-[#EFEBE9]'}`}>{count}</span>
+                                            {city} <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${isActive ? 'bg-white/20' : 'bg-[#F1F3F4]'}`}>{count}</span>
                                         </button>
                                     );
                                 })}
                             </div>
                         </div>
                         
-                        <div className="h-px bg-[#EFEBE9] my-6"></div>
-                        <StatsPanel jobs={allJobs} />
+                        <div className="h-px bg-[#DADCE0] my-6"></div>
+                        <StatsPanel 
+                            jobs={allJobs} 
+                            selectedIndustry={industryFilter}
+                            onSelectIndustry={setIndustryFilter}
+                        />
                     </div>
                </div>
             </div>
@@ -240,7 +269,7 @@ const App: React.FC = () => {
                             <button 
                                 key={tab}
                                 onClick={() => setActiveTab(tab as any)} 
-                                className={`px-5 py-2 rounded-full text-sm font-bold capitalize transition-all whitespace-nowrap border ${isActive ? 'bg-[#FFDBC8] text-[#2D1810] border-transparent shadow-sm' : 'bg-white text-[#5D4037] border-[#EFEBE9] hover:bg-[#FDF2EC]'}`}
+                                className={`px-5 py-2 rounded-full text-sm font-bold capitalize transition-all whitespace-nowrap border ${isActive ? 'bg-[#E8F0FE] text-[#1967D2] border-transparent shadow-sm' : 'bg-white text-[#5F6368] border-[#DADCE0] hover:bg-[#F1F3F4]'}`}
                             >
                                 {tab} <span className="opacity-60 text-xs ml-1">({count})</span>
                             </button>
@@ -250,10 +279,13 @@ const App: React.FC = () => {
 
                 <div className="space-y-4 pb-24">
                     {filteredJobs.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center py-32 bg-white rounded-[32px] border border-dashed border-[#D7CCC8] text-[#A1887F]">
-                            <CheckCircle2 size={64} className="mb-4 text-[#EFEBE9]" />
-                            <h3 className="text-xl font-bold text-[#5D4037]">All caught up</h3>
+                        <div className="flex flex-col items-center justify-center py-32 bg-white rounded-[32px] border border-dashed border-[#DADCE0] text-[#70757A]">
+                            <CheckCircle2 size={64} className="mb-4 text-[#DADCE0]" />
+                            <h3 className="text-xl font-bold text-[#5F6368]">All caught up</h3>
                             <p className="text-sm font-medium">No jobs match your current filters.</p>
+                            {(cityFilter !== 'All' || industryFilter) && (
+                                <button onClick={() => { setCityFilter('All'); setIndustryFilter(null); }} className="mt-4 text-[#1a73e8] font-bold text-sm">Clear Filters</button>
+                            )}
                         </div>
                     ) : (
                         filteredJobs.map(job => (
@@ -281,24 +313,24 @@ const App: React.FC = () => {
 
       </main>
 
-      {/* FLOATING ACTION BUTTON (FAB) FOR SCOUTING */}
+      {/* FLOATING ACTION BUTTON (FAB) FOR SCOUTING - FIXED VISIBILITY */}
       {currentView === ViewState.DASHBOARD && (
         <button 
           onClick={fetchJobs}
           disabled={isFetching}
-          className="fixed bottom-8 right-8 w-16 h-16 bg-[#D97736] text-white rounded-[20px] shadow-xl hover:shadow-2xl hover:scale-105 active:scale-95 transition-all flex items-center justify-center z-50 group border border-white/20"
+          className="fixed bottom-10 right-10 w-16 h-16 bg-[#1a73e8] text-white rounded-[24px] shadow-2xl hover:shadow-3xl hover:bg-[#1557B0] hover:scale-105 active:scale-95 transition-all flex items-center justify-center z-50 group overflow-hidden border-2 border-white ring-2 ring-[#1a73e8]/20"
           title="Scout New Jobs"
         >
            {isFetching ? (
-             <span className="relative flex h-6 w-6">
-               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
-               <span className="relative inline-flex rounded-full h-6 w-6 bg-white/50"></span>
+             <span className="relative flex h-8 w-8">
+               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-50"></span>
+               <span className="relative inline-flex rounded-full h-8 w-8 border-2 border-white border-t-transparent animate-spin"></span>
              </span>
            ) : (
-             <Sparkles size={28} />
+             <Plus size={32} strokeWidth={3} />
            )}
            {analyzingCount > 0 && (
-              <span className="absolute -top-2 -right-2 bg-[#2D1810] text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm animate-bounce">
+              <span className="absolute -top-2 -right-2 bg-[#DB4437] text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-md animate-bounce border border-white">
                   {analyzingCount}
               </span>
            )}

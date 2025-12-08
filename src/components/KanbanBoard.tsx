@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Job } from '../types';
 import JobCard from './JobCard';
@@ -17,10 +16,10 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ jobs, onGenerateKit, onToggle
 
   // Filter jobs by status
   const columns: { id: Job['status'], title: string, icon: React.ReactNode, bgClass: string, accentColor: string }[] = [
-      { id: 'saved', title: 'Saved', icon: <Bookmark size={18} />, bgClass: 'bg-[var(--md-sys-color-surface-container)]', accentColor: 'text-blue-600' },
-      { id: 'applied', title: 'Applied', icon: <Send size={18} />, bgClass: 'bg-[#E0F2F1]', accentColor: 'text-teal-600' },
-      { id: 'interview', title: 'Interview', icon: <Users size={18} />, bgClass: 'bg-[#FFF3E0]', accentColor: 'text-orange-600' },
-      { id: 'offer', title: 'Offer', icon: <Trophy size={18} />, bgClass: 'bg-[#F1F8E9]', accentColor: 'text-green-600' },
+      { id: 'saved', title: 'Saved', icon: <Bookmark size={18} />, bgClass: 'bg-[#F1F3F4]', accentColor: 'text-blue-600' },
+      { id: 'applied', title: 'Applied', icon: <Send size={18} />, bgClass: 'bg-[#E8F0FE]', accentColor: 'text-blue-700' },
+      { id: 'interview', title: 'Interview', icon: <Users size={18} />, bgClass: 'bg-[#FFF8E1]', accentColor: 'text-orange-600' },
+      { id: 'offer', title: 'Offer', icon: <Trophy size={18} />, bgClass: 'bg-[#E6F4EA]', accentColor: 'text-green-600' },
   ];
 
   const handleDragStart = (e: React.DragEvent, id: string) => {
@@ -62,8 +61,8 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ jobs, onGenerateKit, onToggle
                 
                 <div className="flex-1 space-y-4 overflow-y-auto pr-1 custom-scrollbar">
                     {colJobs.length === 0 && (
-                        <div className="text-center py-20 border-2 border-dashed border-black/5 rounded-[24px]">
-                            <p className="text-sm font-medium text-black/30">Drag jobs here</p>
+                        <div className="text-center py-20 border-2 border-dashed border-[#DADCE0] rounded-[24px]">
+                            <p className="text-sm font-medium text-[#70757A]">Drag jobs here</p>
                         </div>
                     )}
                     {colJobs.map(job => (

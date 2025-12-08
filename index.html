@@ -4,32 +4,33 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="https://vitejs.dev/logo.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Senior Job Hunt Agent</title>
+    <title>Vyom's Job Agent</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=Google+Sans:wght@400;500;700&display=swap" rel="stylesheet">
     <style>
       :root {
-        /* Warm Earth Palette extracted from user image */
-        --md-sys-color-primary: #D97736; /* Terracotta Circle */
+        /* Google Neutral Palette */
+        --md-sys-color-primary: #1a73e8; /* Google Blue */
         --md-sys-color-on-primary: #FFFFFF;
-        --md-sys-color-primary-container: #FFDBC8; /* Light Peach Card */
-        --md-sys-color-on-primary-container: #2D1810; /* Dark Brown Text */
+        --md-sys-color-primary-container: #E8F0FE; /* Light Blue */
+        --md-sys-color-on-primary-container: #1967D2; /* Dark Blue Text */
         
-        --md-sys-color-secondary: #5D4037; /* Earthy Brown */
-        --md-sys-color-secondary-container: #FDF2EC; /* Very light peach */
-        --md-sys-color-on-secondary-container: #2D1810;
+        --md-sys-color-secondary: #5F6368; /* Google Grey 700 */
+        --md-sys-color-secondary-container: #F1F3F4; /* Google Grey 100 */
+        --md-sys-color-on-secondary-container: #202124;
         
-        --md-sys-color-tertiary: #A1887F;
-        --md-sys-color-tertiary-container: #EFEBE9;
-        --md-sys-color-on-tertiary-container: #3E2723;
+        --md-sys-color-tertiary: #70757A;
+        --md-sys-color-tertiary-container: #F8F9FA;
+        --md-sys-color-on-tertiary-container: #202124;
 
-        --md-sys-color-surface: #FFF8F6; /* Warm White Page Background */
-        --md-sys-color-surface-dim: #F5EBE9;
-        --md-sys-color-surface-container: #FDF2EC;
-        --md-sys-color-surface-container-high: #FBEFE9;
+        --md-sys-color-surface: #F8F9FA; /* Off White Background */
+        --md-sys-color-surface-dim: #F1F3F4;
+        --md-sys-color-surface-container: #FFFFFF;
+        --md-sys-color-surface-container-high: #F8F9FA;
         
-        --color-text-primary: #2D1810;
-        --color-text-secondary: #5D4037;
+        --color-text-primary: #202124; /* Google Grey 900 */
+        --color-text-secondary: #5F6368; /* Google Grey 700 */
+        --color-border: #DADCE0; /* Google Grey 300 */
       }
 
       body {
@@ -39,8 +40,8 @@
       }
 
       /* M3 Elevation */
-      .elevation-1 { box-shadow: 0px 1px 2px rgba(45, 24, 16, 0.1), 0px 1px 3px 1px rgba(45, 24, 16, 0.05); }
-      .elevation-3 { box-shadow: 0px 1px 3px 0px rgba(45, 24, 16, 0.1), 0px 4px 8px 3px rgba(45, 24, 16, 0.05); }
+      .elevation-1 { box-shadow: 0px 1px 2px rgba(60, 64, 67, 0.3), 0px 1px 3px 1px rgba(60, 64, 67, 0.15); }
+      .elevation-3 { box-shadow: 0px 1px 3px 0px rgba(60, 64, 67, 0.3), 0px 4px 8px 3px rgba(60, 64, 67, 0.15); }
       
       .custom-scrollbar::-webkit-scrollbar {
         width: 8px;
@@ -50,7 +51,7 @@
         background: transparent;
       }
       .custom-scrollbar::-webkit-scrollbar-thumb {
-        background-color: #D7CCC8;
+        background-color: #DADCE0;
         border-radius: 10px;
         border: 2px solid transparent;
         background-clip: content-box;
