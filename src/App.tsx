@@ -9,7 +9,7 @@ import StatsPanel from './components/StatsPanel';
 import KanbanBoard from './components/KanbanBoard';
 import CVEditor from './components/CVEditor';
 import JobDetailModal from './components/JobDetailModal';
-import { Bot, Layout, Columns, FileText, CheckCircle2, Filter, Sparkles, Plus, Search } from 'lucide-react';
+import { Bot, Layout, Columns, FileText, CheckCircle2, Filter, Sparkles, Plus, Search, ArrowDownUp } from 'lucide-react';
 
 const App: React.FC = () => {
   // Navigation & Data
@@ -25,6 +25,7 @@ const App: React.FC = () => {
   // Filter & Sort
   const [cityFilter, setCityFilter] = useState<string>('All');
   const [industryFilter, setIndustryFilter] = useState<string | null>(null);
+  const [sortBy, setSortBy] = useState<'date' | 'score'>('date');
 
   // Status
   const [isFetching, setIsFetching] = useState(false);
@@ -153,7 +154,6 @@ const App: React.FC = () => {
     // Industry Filter
     if (industryFilter) {
         const ind = j.analysis?.industry || 'Tech';
-        // Simple mapping match
         if (ind !== industryFilter) {
              const text = (j.company + " " + j.title + " " + (j.summary || "")).toLowerCase();
              let calculatedIndustry = 'Tech';
@@ -166,6 +166,11 @@ const App: React.FC = () => {
         }
     }
     return true;
+  }).sort((a, b) => {
+      if (sortBy === 'score') {
+          return (b.analysis?.score || 0) - (a.analysis?.score || 0);
+      }
+      return (b.scoutedAt || 0) - (a.scoutedAt || 0);
   });
 
   return (
@@ -202,21 +207,45 @@ const App: React.FC = () => {
 
       <main className="max-w-[1600px] mx-auto px-6 mt-8">
         
-        {/* WELCOME HEADER */}
+        {/* WELCOME HEADER - CENTERED WITH SCOUT BUTTON */}
         {currentView === ViewState.DASHBOARD && (
-            <div className="mb-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <div className="mb-10 pt-10 animate-in fade-in slide-in-from-bottom-4 duration-500 text-center max-w-2xl mx-auto flex flex-col items-center">
                 <h1 className="text-4xl font-normal text-[#202124] tracking-tight">
                     Welcome back, <span className="font-bold">Vyom.</span>
                 </h1>
-                <p className="text-[#5F6368] mt-2 text-lg">
+                <p className="text-[#5F6368] mt-2 text-lg mb-10">
                     You have <span className="font-bold text-[#1a73e8]">{allJobs.filter(j => j.status === 'saved').length} saved jobs</span> and <span className="font-bold text-[#137333]">{allJobs.filter(j => j.status === 'interview').length} active interviews</span>.
                 </p>
+
+                <button
+                    onClick={fetchJobs}
+                    disabled={isFetching}
+                    className="group relative px-6 py-3 bg-white border border-[#DADCE0] text-[#5F6368] rounded-full font-bold text-sm shadow-sm hover:bg-[#F1F3F4] hover:text-[#202124] active:scale-95 transition-all flex items-center gap-2"
+                >
+                    {isFetching ? (
+                        <span className="flex items-center gap-2">
+                            <span className="w-4 h-4 border-2 border-[#5F6368] border-t-transparent rounded-full animate-spin"></span>
+                            Scouting Market...
+                        </span>
+                    ) : (
+                        <>
+                            <Search size={18} />
+                            <span>Scout New Jobs</span>
+                        </>
+                    )}
+                    
+                    {analyzingCount > 0 && (
+                        <span className="absolute -top-2 -right-2 bg-[#DB4437] text-white text-xs font-bold px-2 py-1 rounded-full shadow-md animate-bounce border border-white">
+                            {analyzingCount} analyzing
+                        </span>
+                    )}
+                </button>
             </div>
         )}
 
         {currentView === ViewState.DASHBOARD && (
         <div className="grid grid-cols-12 gap-8 items-start relative">
-            {/* SIDEBAR FILTER PANEL - DIFFERENTIATED UI */}
+            {/* SIDEBAR FILTER PANEL */}
             <div className="col-span-12 lg:col-span-3">
                <div className="sticky top-28 space-y-6">
                     <div className="bg-[#F1F3F4] p-6 rounded-[28px] border border-white shadow-sm ring-1 ring-[#DADCE0]/50">
@@ -257,24 +286,43 @@ const App: React.FC = () => {
 
             {/* MAIN CONTENT LIST */}
             <div className="col-span-12 lg:col-span-9 min-h-screen">
-                <div className="flex items-center gap-3 mb-6 overflow-x-auto pb-2 scrollbar-hide">
-                    {['new', 'saved', 'archived'].map((tab) => {
-                        const count = allJobs.filter(j => {
-                                if (tab === 'new') return (j.status || 'new') === 'new';
-                                if (tab === 'saved') return ['saved', 'applied', 'interview', 'offer'].includes(j.status || '');
-                                return j.status === 'archived';
-                            }).length;
-                        const isActive = activeTab === tab;
-                        return (
-                            <button 
-                                key={tab}
-                                onClick={() => setActiveTab(tab as any)} 
-                                className={`px-5 py-2 rounded-full text-sm font-bold capitalize transition-all whitespace-nowrap border ${isActive ? 'bg-[#E8F0FE] text-[#1967D2] border-transparent shadow-sm' : 'bg-white text-[#5F6368] border-[#DADCE0] hover:bg-[#F1F3F4]'}`}
-                            >
-                                {tab} <span className="opacity-60 text-xs ml-1">({count})</span>
-                            </button>
-                        );
-                    })}
+                
+                {/* Tabs & Sort */}
+                <div className="flex flex-wrap items-center justify-between mb-6 gap-4">
+                    <div className="flex items-center gap-3 overflow-x-auto pb-2 scrollbar-hide">
+                        {['new', 'saved', 'archived'].map((tab) => {
+                            const count = allJobs.filter(j => {
+                                    if (tab === 'new') return (j.status || 'new') === 'new';
+                                    if (tab === 'saved') return ['saved', 'applied', 'interview', 'offer'].includes(j.status || '');
+                                    return j.status === 'archived';
+                                }).length;
+                            const isActive = activeTab === tab;
+                            return (
+                                <button 
+                                    key={tab}
+                                    onClick={() => setActiveTab(tab as any)} 
+                                    className={`px-5 py-2 rounded-full text-sm font-bold capitalize transition-all whitespace-nowrap border ${isActive ? 'bg-[#E8F0FE] text-[#1967D2] border-transparent shadow-sm' : 'bg-white text-[#5F6368] border-[#DADCE0] hover:bg-[#F1F3F4]'}`}
+                                >
+                                    {tab} <span className="opacity-60 text-xs ml-1">({count})</span>
+                                </button>
+                            );
+                        })}
+                    </div>
+
+                    <div className="flex items-center gap-2 bg-white p-1 rounded-full border border-[#DADCE0]">
+                         <button 
+                            onClick={() => setSortBy('date')}
+                            className={`px-4 py-1.5 rounded-full text-xs font-bold flex items-center gap-1 transition-all ${sortBy === 'date' ? 'bg-[#202124] text-white' : 'text-[#5F6368] hover:bg-[#F1F3F4]'}`}
+                         >
+                            Date
+                         </button>
+                         <button 
+                            onClick={() => setSortBy('score')}
+                            className={`px-4 py-1.5 rounded-full text-xs font-bold flex items-center gap-1 transition-all ${sortBy === 'score' ? 'bg-[#202124] text-white' : 'text-[#5F6368] hover:bg-[#F1F3F4]'}`}
+                         >
+                            Score <ArrowDownUp size={12} />
+                         </button>
+                    </div>
                 </div>
 
                 <div className="space-y-4 pb-24">
@@ -312,30 +360,6 @@ const App: React.FC = () => {
         )}
 
       </main>
-
-      {/* FLOATING ACTION BUTTON (FAB) FOR SCOUTING - FIXED VISIBILITY */}
-      {currentView === ViewState.DASHBOARD && (
-        <button 
-          onClick={fetchJobs}
-          disabled={isFetching}
-          className="fixed bottom-10 right-10 w-16 h-16 bg-[#1a73e8] text-white rounded-[24px] shadow-2xl hover:shadow-3xl hover:bg-[#1557B0] hover:scale-105 active:scale-95 transition-all flex items-center justify-center z-50 group overflow-hidden border-2 border-white ring-2 ring-[#1a73e8]/20"
-          title="Scout New Jobs"
-        >
-           {isFetching ? (
-             <span className="relative flex h-8 w-8">
-               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-50"></span>
-               <span className="relative inline-flex rounded-full h-8 w-8 border-2 border-white border-t-transparent animate-spin"></span>
-             </span>
-           ) : (
-             <Plus size={32} strokeWidth={3} />
-           )}
-           {analyzingCount > 0 && (
-              <span className="absolute -top-2 -right-2 bg-[#DB4437] text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-md animate-bounce border border-white">
-                  {analyzingCount}
-              </span>
-           )}
-        </button>
-      )}
 
       <JobDetailModal 
         isOpen={modalOpen} 

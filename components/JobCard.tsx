@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Job } from '../types';
-import { CheckCircle2, AlertTriangle, Briefcase, MapPin, ExternalLink, FileText, TrendingUp, Trash2, Clock, Zap, Bookmark, Archive, ArrowRight, ArrowLeft } from 'lucide-react';
+import { AlertTriangle, Briefcase, MapPin, ExternalLink, FileText, TrendingUp, Trash2, Clock, Zap, Bookmark, Archive, ArrowRight, ArrowLeft } from 'lucide-react';
 
 interface JobCardProps {
   job: Job;
@@ -122,11 +122,10 @@ const JobCard: React.FC<JobCardProps> = ({ job, onOpenDetail, onToggleStatus, on
                 )}
              </div>
 
-             {/* Verdict */}
+             {/* Verdict - Clean text, no box */}
              {analysis ? (
-                 <div className="p-4 bg-[#F8F9FA] rounded-2xl border border-[#E8F0FE] flex items-start gap-3">
-                    <CheckCircle2 size={20} className="text-[#34A853] shrink-0 mt-0.5" />
-                    <p className="text-sm text-[#202124] leading-relaxed font-medium">{analysis.verdict}</p>
+                 <div className="mt-2 mb-6">
+                    <p className="text-sm text-[#3C4043] leading-relaxed font-medium">{analysis.verdict}</p>
                  </div>
              ) : (
                  <div className="space-y-2 max-w-md">
@@ -136,7 +135,7 @@ const JobCard: React.FC<JobCardProps> = ({ job, onOpenDetail, onToggleStatus, on
              )}
 
              {/* Actions */}
-             <div className="flex items-center gap-4 mt-8">
+             <div className="flex items-center gap-4 mt-6">
                  <button onClick={() => onOpenDetail(job, 'strategy')} disabled={!analysis} className="px-6 py-2.5 rounded-full text-sm font-bold bg-white border border-[#DADCE0] text-[#5F6368] hover:border-[#1a73e8] hover:text-[#1a73e8] transition-all flex items-center gap-2">
                      <FileText size={18} /> Strategy Kit
                  </button>

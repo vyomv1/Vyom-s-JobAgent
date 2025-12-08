@@ -1,5 +1,6 @@
+
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { Bold, Italic, Underline, AlignLeft, AlignCenter, AlignRight, RotateCcw, RotateCw, Wand2, Search, Type, List, X, Check, Save } from 'lucide-react';
+import { Bold, Italic, Underline, AlignLeft, AlignCenter, AlignRight, RotateCcw, RotateCw, Wand2, Search, Type, List, X, Check, Save, FileText, BookOpen } from 'lucide-react';
 import { improveCV } from '../services/geminiService';
 
 const CVEditor: React.FC = () => {
@@ -8,6 +9,7 @@ const CVEditor: React.FC = () => {
   
   // AI Panel State
   const [showAiPanel, setShowAiPanel] = useState(false);
+  const [showDoc, setShowDoc] = useState(false);
   const [aiMode, setAiMode] = useState<'impact' | 'clarify' | null>(null);
   const [selectedText, setSelectedText] = useState('');
   const [aiSuggestion, setAiSuggestion] = useState('');
@@ -110,6 +112,17 @@ const CVEditor: React.FC = () => {
   return (
     <div className="flex h-[calc(100vh-100px)] relative bg-[#F8F9FA] rounded-[32px] overflow-hidden border border-[#DADCE0] shadow-sm">
         
+        {/* Reference Document Panel */}
+        {showDoc && (
+             <div className="w-1/2 h-full border-r border-[#DADCE0] bg-white hidden lg:block">
+                 <iframe 
+                    src="https://docs.google.com/document/d/1RcERxf9--nMGdxXTHAt4q35yynk39Aqk31AqSuG02G4/preview" 
+                    className="w-full h-full" 
+                    title="Reference CV"
+                 ></iframe>
+             </div>
+        )}
+
         {/* Main Editor Area */}
         <div className={`flex-1 flex flex-col h-full transition-all duration-300 ${showAiPanel ? 'mr-[320px]' : ''}`}>
             
@@ -151,6 +164,15 @@ const CVEditor: React.FC = () => {
                         <Wand2 size={16} /> Clarify
                     </button>
                 </div>
+
+                {/* Reference Toggle */}
+                <button
+                    onClick={() => setShowDoc(!showDoc)}
+                    className={`flex items-center gap-2 px-3 py-2 rounded-full text-sm font-bold transition-all border ${showDoc ? 'bg-[#202124] text-white border-transparent' : 'bg-white text-[#5F6368] border-[#DADCE0] hover:bg-[#F1F3F4]'}`}
+                    title="Toggle Reference Document"
+                >
+                    <BookOpen size={16} /> <span className="hidden xl:inline">Reference</span>
+                </button>
                 
                  <div className="ml-auto flex items-center gap-2 text-xs font-medium text-[#5F6368] bg-white px-3 py-1.5 rounded-full border border-[#DADCE0]">
                     <Save size={12} className={lastSaved ? 'text-green-600' : 'text-gray-400'} />

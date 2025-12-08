@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Job } from '../types';
 import JobCard from './JobCard';
@@ -14,22 +15,21 @@ interface KanbanBoardProps {
 const KanbanBoard: React.FC<KanbanBoardProps> = ({ jobs, onGenerateKit, onToggleStatus, onDelete, onOpenDetail }) => {
   const [draggedJobId, setDraggedJobId] = useState<string | null>(null);
 
-  // Filter jobs by status
+  // Filter jobs by status - Using uniform neutral background
   const columns: { id: Job['status'], title: string, icon: React.ReactNode, bgClass: string, accentColor: string }[] = [
-      { id: 'saved', title: 'Saved', icon: <Bookmark size={18} />, bgClass: 'bg-[#F1F3F4]', accentColor: 'text-blue-600' },
-      { id: 'applied', title: 'Applied', icon: <Send size={18} />, bgClass: 'bg-[#E8F0FE]', accentColor: 'text-blue-700' },
-      { id: 'interview', title: 'Interview', icon: <Users size={18} />, bgClass: 'bg-[#FFF8E1]', accentColor: 'text-orange-600' },
-      { id: 'offer', title: 'Offer', icon: <Trophy size={18} />, bgClass: 'bg-[#E6F4EA]', accentColor: 'text-green-600' },
+      { id: 'saved', title: 'Saved', icon: <Bookmark size={18} />, bgClass: 'bg-[#F8F9FA]', accentColor: 'text-[#1a73e8]' },
+      { id: 'applied', title: 'Applied', icon: <Send size={18} />, bgClass: 'bg-[#F8F9FA]', accentColor: 'text-[#1a73e8]' },
+      { id: 'interview', title: 'Interview', icon: <Users size={18} />, bgClass: 'bg-[#F8F9FA]', accentColor: 'text-[#F4B400]' },
+      { id: 'offer', title: 'Offer', icon: <Trophy size={18} />, bgClass: 'bg-[#F8F9FA]', accentColor: 'text-[#0F9D58]' },
   ];
 
   const handleDragStart = (e: React.DragEvent, id: string) => {
       setDraggedJobId(id);
       e.dataTransfer.effectAllowed = "move";
-      // Create a ghost image if desired, otherwise browser default
   };
 
   const handleDragOver = (e: React.DragEvent) => {
-      e.preventDefault(); // Necessary to allow dropping
+      e.preventDefault(); 
       e.dataTransfer.dropEffect = "move";
   };
 
@@ -48,7 +48,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ jobs, onGenerateKit, onToggle
           return (
             <div 
                 key={col.id}
-                className={`flex flex-col h-full min-w-[340px] rounded-[32px] p-4 transition-colors ${col.bgClass}`}
+                className={`flex flex-col h-full min-w-[340px] rounded-[32px] p-4 transition-colors ${col.bgClass} border border-[#DADCE0]`}
                 onDragOver={handleDragOver}
                 onDrop={(e) => handleDrop(e, col.id)}
             >
@@ -56,7 +56,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ jobs, onGenerateKit, onToggle
                     <h3 className="font-bold text-lg flex items-center gap-2">
                         {col.icon} {col.title}
                     </h3>
-                    <span className="text-xs bg-white/80 px-2.5 py-1 rounded-full font-bold shadow-sm">{colJobs.length}</span>
+                    <span className="text-xs bg-white border border-[#DADCE0] px-2.5 py-1 rounded-full font-bold shadow-sm text-[#5F6368]">{colJobs.length}</span>
                 </div>
                 
                 <div className="flex-1 space-y-4 overflow-y-auto pr-1 custom-scrollbar">
