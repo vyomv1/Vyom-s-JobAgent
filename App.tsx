@@ -1,15 +1,16 @@
 
 import React, { useState, useEffect } from 'react';
 import { Job, ViewState } from './types';
-import { searchAndParseJobs, analyzeJob, generateApplicationKit } from './services/geminiService';
-import { initFirebase, subscribeToJobs, addOrUpdateJob, updateJobStatus, deleteJob, saveAnalysis } from './services/firebase';
+import { searchAndParseJobs, analyzeJob, generateApplicationKit, enrichJobFromUrl } from './services/geminiService';
+import { initFirebase, subscribeToJobs, addOrUpdateJob, updateJobStatus, deleteJob, saveAnalysis, addManualJob } from './services/firebase';
 import { DEFAULT_FIREBASE_CONFIG } from './constants';
 import JobCard from './components/JobCard';
 import StatsPanel from './components/StatsPanel';
 import KanbanBoard from './components/KanbanBoard';
 import CVEditor from './components/CVEditor';
 import JobDetailModal from './components/JobDetailModal';
-import { Bot, Layout, Columns, FileText, CheckCircle2, Filter, Sparkles, Plus, Search, ArrowDownUp, Globe } from 'lucide-react';
+import AddLinkModal from './components/AddLinkModal';
+import { Bot, Layout, Columns, FileText, CheckCircle2, Filter, Sparkles, Plus, Search, ArrowDownUp, Globe, Link } from 'lucide-react';
 
 const App: React.FC = () => {
   // Navigation & Data
@@ -35,6 +36,7 @@ const App: React.FC = () => {
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
   const [initialModalTab, setInitialModalTab] = useState<'brief' | 'strategy'>('brief');
+  const [isAddLinkOpen, setIsAddLinkOpen] = useState(false);
 
   useEffect(() => {
     if (isDbConnected) {
@@ -95,6 +97,13 @@ const App: React.FC = () => {
     setModalOpen(true);
   };
 
+  const handleUpdateJob = async (updatedJob: Job) => {
+      await addOrUpdateJob(updatedJob);
+      if (selectedJob && selectedJob.id === updatedJob.id) {
+          setSelectedJob(updatedJob);
+      }
+  };
+
   const handleGenerateKit = async (job: Job) => {
     if (!job.analysis) return;
     const content = await generateApplicationKit(job, job.analysis);
@@ -122,6 +131,42 @@ const App: React.FC = () => {
     } else {
         updateJobStatus(jobId, 'archived');
     }
+  };
+
+  const handleAddManualJob = async (url: string) => {
+      try {
+          // 1. View Navigation Logic
+          // If we are on dashboard, ensure 'saved' tab is active to see new job.
+          if (currentView === ViewState.DASHBOARD) {
+              setActiveTab('saved');
+          }
+          // If we are elsewhere (e.g. CV Editor), switch to Dashboard.
+          // Exception: If on Kanban, stay on Kanban (job will appear in Saved column).
+          if (currentView !== ViewState.DASHBOARD && currentView !== ViewState.KANBAN) {
+              setCurrentView(ViewState.DASHBOARD);
+              setActiveTab('saved');
+          }
+
+          // 2. Create Placeholder immediately
+          const placeholder = await addManualJob(url);
+          if (!placeholder) return;
+          
+          setAnalyzingCount(prev => prev + 1);
+
+          // 3. Enrich with AI
+          const enrichedDetails = await enrichJobFromUrl(url);
+          const enrichedJob = { ...placeholder, ...enrichedDetails };
+          await addOrUpdateJob(enrichedJob);
+
+          // 4. Analyze
+          const analysis = await analyzeJob(enrichedJob);
+          await saveAnalysis(enrichedJob.id, analysis);
+
+      } catch (e) {
+          console.error("Error adding manual job", e);
+      } finally {
+          setAnalyzingCount(prev => Math.max(0, prev - 1));
+      }
   };
 
   const locationCounts = allJobs.reduce((acc, job) => {
@@ -178,7 +223,7 @@ const App: React.FC = () => {
       
       {/* FLOATING HEADER */}
       <div className="sticky top-4 z-40 px-4 mb-4 flex justify-center">
-          <header className="bg-white/90 backdrop-blur-xl border border-white/40 rounded-full shadow-lg elevation-1 py-2 px-6 w-full max-w-2xl flex items-center justify-between transition-all">
+          <header className="bg-white/90 backdrop-blur-xl border border-white/40 rounded-full shadow-lg elevation-1 p-2 w-full max-w-2xl flex items-center justify-between transition-all">
              <div className="flex items-center gap-3">
                  <div className="bg-[#1a73e8] p-2 rounded-full text-white shadow-sm">
                      <Bot size={20} fill="none" />
@@ -189,7 +234,7 @@ const App: React.FC = () => {
              <nav className="flex items-center gap-1 bg-[#F1F3F4] p-1 rounded-full">
                  {[
                    { id: ViewState.DASHBOARD, label: 'Dashboard', icon: Layout },
-                   { id: ViewState.KANBAN, label: 'Pipeline', icon: Columns },
+                   { id: ViewState.KANBAN, label: 'Jobs Applied', icon: Columns },
                    { id: ViewState.CV_EDITOR, label: 'CV', icon: FileText }
                  ].map(item => (
                    <button 
@@ -217,29 +262,40 @@ const App: React.FC = () => {
                     You have <span className="font-bold text-[#1a73e8]">{allJobs.filter(j => j.status === 'saved').length} saved jobs</span> and <span className="font-bold text-[#137333]">{allJobs.filter(j => j.status === 'interview').length} active interviews</span>.
                 </p>
 
-                <button
-                    onClick={fetchJobs}
-                    disabled={isFetching}
-                    className="group relative px-6 py-3 bg-white border border-[#DADCE0] text-[#5F6368] rounded-full font-bold text-sm shadow-sm hover:bg-[#F1F3F4] hover:text-[#202124] active:scale-95 transition-all flex items-center gap-2 mb-20"
-                >
-                    {isFetching ? (
-                        <span className="flex items-center gap-2">
-                            <span className="w-4 h-4 border-2 border-[#5F6368] border-t-transparent rounded-full animate-spin"></span>
-                            Scouting Market...
-                        </span>
-                    ) : (
-                        <>
-                            <Search size={18} />
-                            <span>Scout New Jobs</span>
-                        </>
-                    )}
-                    
-                    {analyzingCount > 0 && (
-                        <span className="absolute -top-2 -right-2 bg-[#DB4437] text-white text-xs font-bold px-2 py-1 rounded-full shadow-md animate-bounce border border-white">
-                            {analyzingCount} analyzing
-                        </span>
-                    )}
-                </button>
+                <div className="flex items-center gap-4 mb-20">
+                    <button
+                        onClick={fetchJobs}
+                        disabled={isFetching}
+                        className="px-6 py-2.5 rounded-full text-sm font-bold bg-white border border-[#DADCE0] text-[#5F6368] hover:border-[#1a73e8] hover:text-[#1a73e8] transition-all flex items-center gap-2 shadow-sm"
+                    >
+                        {isFetching ? (
+                            <span className="flex items-center gap-2">
+                                <span className="w-4 h-4 border-2 border-[#5F6368] border-t-transparent rounded-full animate-spin"></span>
+                                Scouting Market...
+                            </span>
+                        ) : (
+                            <>
+                                <Search size={18} />
+                                <span>Scout New Jobs</span>
+                            </>
+                        )}
+                        
+                        {analyzingCount > 0 && (
+                            <span className="absolute -top-2 -right-2 bg-[#DB4437] text-white text-xs font-bold px-2 py-1 rounded-full shadow-md animate-bounce border border-white">
+                                {analyzingCount} analyzing
+                            </span>
+                        )}
+                    </button>
+
+                    <button
+                        onClick={() => setIsAddLinkOpen(true)}
+                        className="px-6 py-2.5 rounded-full text-sm font-bold bg-white border border-[#DADCE0] text-[#5F6368] hover:border-[#1a73e8] hover:text-[#1a73e8] transition-all flex items-center gap-2 shadow-sm"
+                        title="Add Job Link"
+                    >
+                        <Link size={18} />
+                        <span>Add Link</span>
+                    </button>
+                </div>
             </div>
         )}
 
@@ -367,6 +423,7 @@ const App: React.FC = () => {
                 onToggleStatus={handleKanbanMove}
                 onDelete={handleDelete}
                 onOpenDetail={handleOpenDetail}
+                onAddJob={handleAddManualJob}
             />
         )}
 
@@ -382,6 +439,13 @@ const App: React.FC = () => {
         job={selectedJob} 
         onGenerateKit={handleGenerateKit}
         initialTab={initialModalTab}
+        onUpdateJob={handleUpdateJob}
+      />
+      
+      <AddLinkModal 
+        isOpen={isAddLinkOpen}
+        onClose={() => setIsAddLinkOpen(false)}
+        onAdd={handleAddManualJob}
       />
     </div>
   );

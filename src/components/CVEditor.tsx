@@ -2,6 +2,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Bold, Italic, Underline, AlignLeft, AlignCenter, AlignRight, RotateCcw, RotateCw, Wand2, Search, Type, List, X, Check, Save, FileText, BookOpen } from 'lucide-react';
 import { improveCV } from '../services/geminiService';
+import { saveCV, getCV } from '../services/firebase';
 
 const CVEditor: React.FC = () => {
   const editorRef = useRef<HTMLDivElement>(null);
@@ -15,33 +16,37 @@ const CVEditor: React.FC = () => {
   const [aiSuggestion, setAiSuggestion] = useState('');
   const [isAiLoading, setIsAiLoading] = useState(false);
 
-  // Initial Load
+  // Initial Load from Firestore
   useEffect(() => {
-    const saved = localStorage.getItem('cv_content');
-    if (saved && editorRef.current) {
-        editorRef.current.innerHTML = saved;
-        setLastSaved('Restored from backup');
-    } else if (editorRef.current && !editorRef.current.innerHTML.trim()) {
-        // Default Content
-        editorRef.current.innerHTML = `
-        <h1 style="font-size: 2em; font-weight: bold; margin-bottom: 0.5em; color: var(--md-sys-color-primary);">Senior UX Designer</h1>
-        <p><strong>Summary</strong></p>
-        <p>Strategic and human-centered Senior UX Designer with 7+ years of experience transforming complex financial and insurance problems into intuitive digital solutions.</p>
-        <br>
-        <p><strong>Experience</strong></p>
-        <p><strong>Lead Product Designer | Intact Insurance</strong></p>
-        <ul>
-            <li>Spearheaded the redesign of the claims portal, reducing processing time by 30%.</li>
-            <li>Mentored junior designers and established the 'Trove' design system.</li>
-        </ul>
-        `;
-    }
+    const loadContent = async () => {
+        const content = await getCV();
+        if (content && editorRef.current) {
+            editorRef.current.innerHTML = content;
+            setLastSaved('Loaded from Cloud');
+        } else if (editorRef.current && !editorRef.current.innerHTML.trim()) {
+            // Default Content if nothing in DB
+            editorRef.current.innerHTML = `
+            <h1 style="font-size: 2em; font-weight: bold; margin-bottom: 0.5em; color: var(--md-sys-color-primary);">Senior UX Designer</h1>
+            <p><strong>Summary</strong></p>
+            <p>Strategic and human-centered Senior UX Designer with 7+ years of experience transforming complex financial and insurance problems into intuitive digital solutions.</p>
+            <br>
+            <p><strong>Experience</strong></p>
+            <p><strong>Lead Product Designer | Intact Insurance</strong></p>
+            <ul>
+                <li>Spearheaded the redesign of the claims portal, reducing processing time by 30%.</li>
+                <li>Mentored junior designers and established the 'Trove' design system.</li>
+            </ul>
+            `;
+        }
+    };
+    loadContent();
   }, []);
 
-  const saveContent = useCallback(() => {
+  const saveContent = useCallback(async () => {
     if (editorRef.current) {
         const html = editorRef.current.innerHTML;
-        localStorage.setItem('cv_content', html);
+        // Save to Firestore
+        await saveCV(html);
         const now = new Date();
         setLastSaved(now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
     }
@@ -49,11 +54,34 @@ const CVEditor: React.FC = () => {
 
   // Debounced auto-save
   useEffect(() => {
-      const handleInput = () => saveContent();
+      const handleInput = () => {
+          // Simple debounce handled by user typing speed, but for DB we might want to throttle. 
+          // For now, save on every input is okay for small scale, but maybe debounce 1s?
+          const timeoutId = setTimeout(() => {
+              saveContent();
+          }, 1000);
+          return () => clearTimeout(timeoutId);
+      };
+      
       const el = editorRef.current;
-      el?.addEventListener('input', handleInput);
-      return () => el?.removeEventListener('input', handleInput);
+      // We attach a raw input listener to trigger the debounce
+      const rawInputHandler = () => {
+         // Trigger the debounced save
+         handleInput();
+      };
+      
+      el?.addEventListener('input', rawInputHandler);
+      return () => el?.removeEventListener('input', rawInputHandler);
   }, [saveContent]);
+
+  const handlePaste = (e: React.ClipboardEvent) => {
+      // Default behavior preserves formatting. 
+      // We only intervene if we want to strip dangerous tags, but modern browsers handle this okay.
+      // User specifically requested to PRESERVE source formatting.
+      // So we will allow default behavior.
+      // However, if we want to ensure it doesn't break the container:
+      // The container has overflow-visible so it should expand.
+  };
 
   const execCmd = (command: string, value: string | undefined = undefined) => {
     document.execCommand(command, false, value);
@@ -114,7 +142,7 @@ const CVEditor: React.FC = () => {
         
         {/* Reference Document Panel */}
         {showDoc && (
-             <div className="w-1/2 h-full border-r border-[#DADCE0] bg-white hidden lg:block">
+             <div className="w-1/2 h-full border-r border-[#DADCE0] bg-white hidden lg:block animate-in slide-in-from-left-4 duration-300">
                  <iframe 
                     src="https://docs.google.com/document/d/1RcERxf9--nMGdxXTHAt4q35yynk39Aqk31AqSuG02G4/preview" 
                     className="w-full h-full" 
@@ -126,7 +154,7 @@ const CVEditor: React.FC = () => {
         {/* Main Editor Area */}
         <div className={`flex-1 flex flex-col h-full transition-all duration-300 ${showAiPanel ? 'mr-[320px]' : ''}`}>
             
-            {/* Toolbar */}
+            {/* Toolbar - Sticky */}
             <div className="flex-none bg-[#F1F3F4] px-6 py-4 flex items-center gap-4 border-b border-[#DADCE0] z-10 sticky top-0 overflow-x-auto scrollbar-hide shadow-sm">
                 
                 <div className="flex items-center gap-1 bg-white p-1 rounded-full shadow-sm border border-[#DADCE0]">
@@ -180,13 +208,13 @@ const CVEditor: React.FC = () => {
                 </div>
             </div>
 
-            {/* Paper */}
+            {/* Paper Container - Scrollable */}
             <div className="flex-1 w-full overflow-y-auto custom-scrollbar p-8 flex justify-center bg-[#F8F9FA]">
                 <div 
                     ref={editorRef}
                     contentEditable
-                    className="w-full max-w-[850px] min-h-[1100px] bg-white shadow-sm hover:shadow-md border border-[#DADCE0] p-[72px] outline-none text-[#202124] font-sans text-lg leading-[1.6] transition-all rounded-sm"
-                    style={{ marginBottom: '4rem' }}
+                    onPaste={handlePaste}
+                    className="w-full max-w-[850px] min-h-[1100px] h-max bg-white shadow-sm hover:shadow-md border border-[#DADCE0] p-[72px] outline-none text-[#202124] font-sans text-lg leading-[1.6] transition-all rounded-sm mb-16"
                 />
             </div>
         </div>

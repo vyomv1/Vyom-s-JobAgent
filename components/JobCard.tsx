@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Job } from '../types';
-import { AlertTriangle, Briefcase, MapPin, ExternalLink, FileText, TrendingUp, Trash2, Clock, Zap, Bookmark, Archive, ArrowRight, ArrowLeft } from 'lucide-react';
+import { AlertTriangle, Briefcase, MapPin, ExternalLink, FileText, TrendingUp, Trash2, Clock, Zap, Bookmark, Archive } from 'lucide-react';
 
 interface JobCardProps {
   job: Job;
@@ -19,39 +19,28 @@ const JobCard: React.FC<JobCardProps> = ({ job, onOpenDetail, onToggleStatus, on
 
   if (isKanban) {
       return (
-        <div className="bg-white p-5 rounded-2xl shadow-sm border border-[#DADCE0] hover:shadow-md transition-all group flex flex-col gap-3 relative cursor-grab active:cursor-grabbing">
-            <div className="flex justify-between items-start">
+        <div 
+            className="bg-white p-4 rounded-2xl shadow-sm border border-[#DADCE0] hover:shadow-md transition-all group flex flex-col gap-3 relative cursor-grab active:cursor-grabbing hover:border-[#1a73e8] focus-within:ring-2 focus-within:ring-[#1a73e8] outline-none"
+            tabIndex={0}
+            role="button"
+        >
+            <div className="flex justify-between items-start gap-2">
                 <h4 onClick={() => onOpenDetail(job)} className="font-bold text-sm text-[#202124] leading-snug line-clamp-2 cursor-pointer hover:text-[#1a73e8] transition-colors">{job.title}</h4>
-                <div className={`w-2 h-2 rounded-full ${analysis?.isHighValue ? 'bg-[#34A853]' : 'bg-[#DADCE0]'}`}></div>
+                {analysis && (
+                    <div className={`shrink-0 w-2 h-2 rounded-full ${analysis.isHighValue ? 'bg-[#34A853]' : 'bg-[#DADCE0]'}`} title={analysis.isHighValue ? "High Value" : "Standard"}></div>
+                )}
             </div>
-            <p className="text-xs font-medium text-[#5F6368]">{job.company}</p>
+            
+            <p className="text-xs font-medium text-[#5F6368] line-clamp-1">{job.company}</p>
             
             <div className="flex items-center gap-2 mt-2 pt-3 border-t border-[#F1F3F4]">
-                {/* Back Button */}
-                {status !== 'saved' && (
-                     <button onClick={() => {
-                         if (status === 'applied') onToggleStatus(job.id, 'saved');
-                         if (status === 'interview') onToggleStatus(job.id, 'applied');
-                         if (status === 'offer') onToggleStatus(job.id, 'interview');
-                     }} className="p-2 text-[#70757A] hover:bg-[#F1F3F4] rounded-full transition-colors" title="Move Back">
-                        <ArrowLeft size={14} />
-                    </button>
-                )}
-                
-                <button onClick={() => onOpenDetail(job)} className="p-2 text-[#70757A] hover:bg-[#E8F0FE] hover:text-[#1967D2] rounded-full transition-colors mx-auto">
-                    <FileText size={16} />
+                <button 
+                    onClick={(e) => { e.stopPropagation(); onOpenDetail(job); }} 
+                    className="w-full py-2 text-xs font-bold text-[#70757A] hover:bg-[#E8F0FE] hover:text-[#1967D2] rounded-md transition-colors bg-[#F1F3F4] flex items-center justify-center gap-2"
+                    title="View Details"
+                >
+                    <FileText size={14} /> View Details
                 </button>
-
-                {/* Forward Button */}
-                 {status !== 'offer' && (
-                     <button onClick={() => {
-                         if (status === 'saved') onToggleStatus(job.id, 'applied');
-                         if (status === 'applied') onToggleStatus(job.id, 'interview');
-                         if (status === 'interview') onToggleStatus(job.id, 'offer');
-                     }} className="p-2 text-white bg-[#202124] hover:bg-[#1a73e8] rounded-full transition-colors shadow-sm" title="Move Forward">
-                        <ArrowRight size={14} />
-                    </button>
-                )}
             </div>
         </div>
       );
@@ -136,9 +125,6 @@ const JobCard: React.FC<JobCardProps> = ({ job, onOpenDetail, onToggleStatus, on
 
              {/* Actions */}
              <div className="flex items-center gap-4 mt-6">
-                 <button onClick={() => onOpenDetail(job, 'strategy')} disabled={!analysis} className="px-6 py-2.5 rounded-full text-sm font-bold bg-white border border-[#DADCE0] text-[#5F6368] hover:border-[#1a73e8] hover:text-[#1a73e8] transition-all flex items-center gap-2">
-                     <FileText size={18} /> Strategy Kit
-                 </button>
                  <a href={applyUrl} target="_blank" rel="noopener noreferrer" className="px-6 py-2.5 rounded-full text-sm font-bold bg-[#1a73e8] text-white hover:bg-[#1557B0] hover:shadow-lg transition-all flex items-center gap-2">
                      Apply Now <ExternalLink size={18} />
                  </a>

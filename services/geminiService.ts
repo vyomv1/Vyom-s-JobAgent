@@ -36,6 +36,12 @@ const retryWithBackoff = async <T>(fn: () => Promise<T>, retries = 5, baseDelay 
   }
 };
 
+const cleanJsonOutput = (text: string) => {
+    if (!text) return "{}";
+    const jsonMatch = text.match(/```json\n([\s\S]*?)\n```/) || text.match(/```([\s\S]*?)```/);
+    return jsonMatch ? jsonMatch[1] : text.replace(/```json/g, '').replace(/```/g, '').trim();
+};
+
 export const searchAndParseJobs = async (query: string): Promise<Job[]> => {
   const ai = getClient();
   const prompt = `
@@ -53,12 +59,10 @@ export const searchAndParseJobs = async (query: string): Promise<Job[]> => {
     [{"job_title": "String", "company": "String", "seniority_score": "Mid|Senior|Lead", "source_url": "URL", "is_related_job_discovery": boolean, "summary": "String", "posted_date": "String", "location": "String", "source": "String"}]
   `;
   const response = await retryWithBackoff<GenerateContentResponse>(() => ai.models.generateContent({ model: "gemini-2.5-flash", contents: prompt, config: { tools: [{ googleSearch: {} }] } }));
-  const text = response.text || "[]";
-  const jsonMatch = text.match(/```json\n([\s\S]*?)\n```/) || text.match(/```([\s\S]*?)```/);
-  const cleanJson = jsonMatch ? jsonMatch[1] : text.replace(/```json/g, '').replace(/```/g, '').trim();
+  
   let rawJobs = [];
   try {
-    rawJobs = JSON.parse(cleanJson);
+    rawJobs = JSON.parse(cleanJsonOutput(response.text || "[]"));
   } catch(e) { console.error("JSON Parse Error in search", e); }
   return rawJobs.map((j: any) => ({
     id: `job-${Date.now()}-${Math.random()}`,
@@ -67,6 +71,117 @@ export const searchAndParseJobs = async (query: string): Promise<Job[]> => {
     source: j.source || "Web", postedDate: j.posted_date, seniorityScore: j.seniority_score,
     isRelatedDiscovery: j.is_related_job_discovery
   }));
+};
+
+export const enrichJobFromUrl = async (url: string): Promise<Partial<Job>> => {
+  const ai = getClient();
+  
+  // 1. Attempt local regex parsing first as a fallback/baseline
+  let fallbackTitle = "Unknown Role";
+  let fallbackCompany = "Unknown Company";
+  let jobId = "";
+
+  try {
+      const urlObj = new URL(url);
+      
+      // Extract Job ID if present (common in Oracle, Workday, etc)
+      const idMatch = url.match(/\/job\/(\d+)/) || url.match(/jobId=(\d+)/) || url.match(/currentJobId=(\d+)/) || url.match(/\/(\d{6,})/);
+      if (idMatch) {
+          jobId = idMatch[1];
+          fallbackTitle = `Job ${jobId}`; // Better default than "Unknown"
+      }
+
+      const pathParts = urlObj.pathname.split(/[-/_]/).filter(p => p.length > 2);
+      if (pathParts.length > 0) {
+          const meaningful = pathParts.filter(p => !['job', 'view', 'linkedin', 'careers', 'detail', 'uk', 'sites', 'en', 'candidateexperience', 'hcmui'].includes(p.toLowerCase()));
+          if (meaningful.length > 0) {
+              fallbackTitle = meaningful.slice(0, 3).map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+              if (meaningful.length > 3) fallbackCompany = meaningful[2].charAt(0).toUpperCase() + meaningful[2].slice(1);
+          }
+      }
+      
+      // Domain fallback for company
+      if (fallbackCompany === "Unknown Company") {
+           const domain = urlObj.hostname.replace('www.', '').split('.')[0];
+           if (domain) {
+               fallbackCompany = domain.charAt(0).toUpperCase() + domain.slice(1);
+               // Handle common abbreviations known in this context
+               if (fallbackCompany.toLowerCase() === 'jpmc') fallbackCompany = "JPMorgan Chase";
+               if (fallbackCompany.toLowerCase().includes('oracle')) fallbackCompany = "JPMorgan Chase"; // JPMC often uses generic oracle domains
+           }
+      }
+
+  } catch(e) {}
+
+  let searchPrompt = "";
+  if (url.includes('oraclecloud.com') && jobId) {
+      // Broadened strategy: Search the ID with JPMC, but also try generic "careers" + ID in case it's not JPMC.
+      searchPrompt = `CRITICAL: Job ID is "${jobId}". 
+      Perform these specific Google searches:
+      1. "JPMorgan Chase job ${jobId}"
+      2. "site:oraclecloud.com ${jobId}"
+      3. "${jobId} careers UK"
+      
+      Use the search results to find the text of the job description.`;
+  } else {
+      searchPrompt = `Search for: "${url}" OR "${fallbackCompany} job ${jobId || fallbackTitle}"`;
+  }
+
+  const prompt = `
+    I have a job posting link: "${url}".
+    ${jobId ? `Job ID: ${jobId}` : ''}
+    ${fallbackCompany !== "Unknown Company" ? `Company: ${fallbackCompany}` : ''}
+    
+    ${searchPrompt}
+    
+    You are an expert Talent Scout Agent. Your task is to extract the details of this specific job posting.
+    
+    ### INSTRUCTIONS
+    1.  **Search Strategy**: Execute the searches above.
+    2.  **Verify Integrity**: 
+        - If you find a generic "Careers" page with many jobs, DO NOT just pick the first one.
+        - You MUST find the specific job title associated with ID ${jobId} or the link content.
+        - If you cannot find the specific job text because it is behind a login or not indexed, return the inferred title "${fallbackTitle}" or "Job ${jobId}" and an empty summary. **DO NOT** return "Manual Entry Required".
+    3.  **Extract Data**:
+        - **Job Title**: The specific role (e.g., "User Experience Design Lead").
+        - **Company**: The organization hiring.
+        - **Location**: City, Country, or "Remote".
+        - **Summary**: A detailed job description. If you can't find it, return an empty string "".
+        - **Posted Date**: Relative date (e.g. "2 days ago") or today's date if unknown.
+
+    ### OUTPUT FORMAT
+    Return valid JSON in a markdown code block matching this schema:
+    { "title": "string", "company": "string", "location": "string", "summary": "string", "postedDate": "string" }
+  `;
+  
+  try {
+    const response = await retryWithBackoff<GenerateContentResponse>(() => 
+        ai.models.generateContent({ 
+            model: "gemini-2.5-flash", 
+            contents: prompt, 
+            config: { 
+                tools: [{ googleSearch: {} }],
+            } 
+        })
+    );
+    const json = JSON.parse(cleanJsonOutput(response.text || "{}"));
+    
+    // Fallback if AI fails to get good data
+    if (!json.title || json.title === "Unknown" || json.title.includes("Scouting")) json.title = fallbackTitle;
+    if (!json.company || json.company === "Detecting..." || ['linkedin', 'indeed', 'glassdoor'].includes(json.company?.toLowerCase())) json.company = fallbackCompany;
+    if (!json.postedDate || json.postedDate === "Just now") json.postedDate = new Date().toLocaleDateString();
+
+    return json;
+  } catch (e) {
+    console.error("Enrichment failed", e);
+    // Return regex fallback
+    return {
+        title: fallbackTitle,
+        company: fallbackCompany,
+        summary: "",
+        postedDate: new Date().toLocaleDateString()
+    };
+  }
 };
 
 export const analyzeJob = async (job: Job): Promise<JobAnalysis> => {
@@ -124,7 +239,7 @@ export const analyzeJob = async (job: Job): Promise<JobAnalysis> => {
   }));
 
   try {
-    return JSON.parse(response.text || "{}");
+    return JSON.parse(cleanJsonOutput(response.text || "{}"));
   } catch (e) {
     console.error("JSON Parse Error in analysis:", e);
     return {
@@ -139,7 +254,15 @@ export const generateApplicationKit = async (job: Job, analysis: JobAnalysis): P
   const prompt = `
     Create a deep, executive-level "Application Strategy Kit" for the user applying to:
     Role: ${job.title} at ${job.company}.
-    Job Summary: ${job.summary}
+    
+    ### CRITICAL SOURCE MATERIAL
+    You MUST use the following Job Summary as the **absolute truth** for the job requirements. Do not hallucinate other requirements.
+    
+    Job Summary:
+    """
+    ${job.summary}
+    """
+    
     Initial Strategy: ${analysis.strategy}
     
     ACT AS: A Senior Product Design Hiring Manager at a top-tier tech firm.
@@ -150,16 +273,16 @@ export const generateApplicationKit = async (job: Job, analysis: JobAnalysis): P
     (Reveal what they are *actually* scared of for this specific role, e.g., "They are afraid of a designer who slows down shipping.")
     
     # 🔑 The 'Trojan Horse' Strategy
-    (A unique angle to pitch myself that other candidates won't think of. Connect my background in Design Systems (Trove) or Compliance (Intact) specifically to their needs.)
+    (A unique angle to pitch myself that other candidates won't think of. Connect my background in Design Systems (Trove) or Compliance (Intact) specifically to their needs found in the summary.)
     
     # 📝 Resume Micro-Adjustments
     (3 specific bullets to re-write on my CV. Show "Before" vs "After".)
     
     # 🎤 Behavioral Interview Prep
-    (3 specific, difficult questions they will ask. Provide the "STAR" points I should hit for each.)
+    (3 specific, difficult questions they will ask based on the summary. Provide the "STAR" points I should hit for each.)
     
     # ✉️ High-Signal Cover Letter
-    (A draft that is SHORT, PUNCHY, and devoid of fluff. No "I am writing to apply". Start with value.)
+    (A draft that is SHORT, PUNCHY, and devoid of fluff. No "I am writing to apply". Start with value. Use the job's terminology.)
     
     TONE: Inside baseball, tactical, no corporate jargon. Address user as "You".
   `;
@@ -180,13 +303,12 @@ export const improveCV = async (currentCv: string, instruction: string): Promise
     `;
     const response = await retryWithBackoff<GenerateContentResponse>(() => ai.models.generateContent({ 
         model: "gemini-2.5-flash", 
-        contents: prompt,
+        contents: prompt, 
         config: { systemInstruction: "Act as a Senior Resume Writer. Output only the revised text." }
     }));
     return response.text || currentCv;
 };
 
 export const expandJobDescription = async (job: Job): Promise<string> => {
-    // Function disabled as per user request to use original description
     return job.summary;
 };
