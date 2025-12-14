@@ -7,6 +7,31 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Vyom's Job Agent</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        darkMode: 'class',
+        theme: {
+          extend: {
+            colors: {
+              apple: {
+                bg: '#F5F5F7',
+                'bg-dark': '#000000',
+                card: '#FFFFFF',
+                'card-dark': '#1C1C1E',
+                text: '#1d1d1f',
+                'text-dark': '#F5F5F7',
+                gray: '#86868b',
+                'gray-dark': '#98989D',
+                border: '#e8e8ed',
+                'border-dark': '#38383A',
+                blue: '#0071e3',
+                'blue-dark': '#0A84FF',
+              }
+            }
+          }
+        }
+      }
+    </script>
     <style>
       :root {
         /* Apple Web Colors */
@@ -25,6 +50,11 @@
         -webkit-font-smoothing: antialiased;
         overflow-x: hidden;
       }
+      
+      .dark body {
+        background-color: #000000;
+        color: #F5F5F7;
+      }
 
       /* Refined Scrollbar */
       ::-webkit-scrollbar {
@@ -40,9 +70,19 @@
         transition: all 0.4s cubic-bezier(0.25, 1, 0.5, 1);
       }
       
+      .dark .apple-card {
+        background: #1C1C1E;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2);
+        border: 1px solid rgba(255,255,255,0.1);
+      }
+      
       .apple-card:hover {
         transform: scale(1.01);
         box-shadow: 0 20px 30px -10px rgba(0, 0, 0, 0.08);
+      }
+      
+      .dark .apple-card:hover {
+        box-shadow: 0 20px 30px -10px rgba(0, 0, 0, 0.5);
       }
 
       .apple-button {
@@ -51,9 +91,18 @@
         border-radius: 9999px;
         transition: all 0.2s ease;
       }
+      
+      .dark .apple-button {
+         background-color: #0A84FF;
+      }
+      
       .apple-button:hover {
         background-color: #0077ED;
         transform: scale(1.02);
+      }
+      
+      .dark .apple-button:hover {
+        background-color: #409CFF;
       }
       
       .animate-fade-in-up {

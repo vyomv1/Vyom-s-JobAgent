@@ -50,11 +50,11 @@ const StatsPanel: React.FC<StatsPanelProps> = ({ jobs, selectedIndustry, onSelec
   return (
     <div>
       <div className="flex items-center justify-between mb-3">
-        <h3 className="text-[11px] font-bold text-[#86868b] uppercase tracking-wider">Breakdown</h3>
+        <h3 className="text-[11px] font-bold text-[#86868b] dark:text-[#98989D] uppercase tracking-wider">Breakdown</h3>
         {selectedIndustry && (
             <button 
                 onClick={() => onSelectIndustry(null)}
-                className="text-[10px] font-bold text-[#0071e3] hover:underline"
+                className="text-[10px] font-bold text-[#0071e3] dark:text-[#0A84FF] hover:underline"
             >
                 Reset
             </button>
@@ -97,7 +97,7 @@ const StatsPanel: React.FC<StatsPanelProps> = ({ jobs, selectedIndustry, onSelec
         </ResponsiveContainer>
         
         <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-             <span className="text-2xl font-bold text-[#1d1d1f] tracking-tight">{selectedIndustry ? data.find(d => d.name === selectedIndustry)?.value : totalJobs}</span>
+             <span className="text-2xl font-bold text-[#1d1d1f] dark:text-[#f5f5f7] tracking-tight">{selectedIndustry ? data.find(d => d.name === selectedIndustry)?.value : totalJobs}</span>
         </div>
       </div>
       
@@ -108,7 +108,7 @@ const StatsPanel: React.FC<StatsPanelProps> = ({ jobs, selectedIndustry, onSelec
             <button
                 key={entry.name} 
                 onClick={() => onSelectIndustry(isSelected ? null : entry.name)}
-                className={`w-full flex items-center justify-between text-[11px] cursor-pointer px-2.5 py-1.5 rounded-lg transition-colors ${isSelected ? 'bg-[#F5F5F7] font-semibold text-[#0071e3]' : 'text-[#86868b] hover:bg-[#F5F5F7]'}`}
+                className={`w-full flex items-center justify-between text-[11px] cursor-pointer px-2.5 py-1.5 rounded-lg transition-colors ${isSelected ? 'bg-[#F5F5F7] dark:bg-[#2C2C2E] font-semibold text-[#0071e3] dark:text-[#0A84FF]' : 'text-[#86868b] dark:text-[#98989D] hover:bg-[#F5F5F7] dark:hover:bg-[#2C2C2E]'}`}
             >
                <div className="flex items-center gap-2">
                  <div className="w-2 h-2 rounded-full" style={{ backgroundColor: COLORS[index % COLORS.length] }}></div>

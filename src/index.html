@@ -7,61 +7,112 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Vyom's Job Agent</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        darkMode: 'class',
+        theme: {
+          extend: {
+            colors: {
+              apple: {
+                bg: '#F5F5F7',
+                'bg-dark': '#000000',
+                card: '#FFFFFF',
+                'card-dark': '#1C1C1E',
+                text: '#1d1d1f',
+                'text-dark': '#F5F5F7',
+                gray: '#86868b',
+                'gray-dark': '#98989D',
+                border: '#e8e8ed',
+                'border-dark': '#38383A',
+                blue: '#0071e3',
+                'blue-dark': '#0A84FF',
+              }
+            }
+          }
+        }
+      }
+    </script>
     <style>
       :root {
-        --mac-window-bg: rgba(255, 255, 255, 0.85);
-        --mac-sidebar-bg: rgba(240, 240, 245, 0.5);
-        --mac-border: rgba(0, 0, 0, 0.1);
-        --mac-shadow: 0 20px 40px rgba(0,0,0,0.15);
-        --mac-active: #007AFF;
+        /* Apple Web Colors */
+        --apple-blue: #0071e3;
+        --apple-dark: #1d1d1f;
+        --apple-gray: #86868b;
+        --apple-light-gray: #f5f5f7;
+        --apple-bg: #f5f5f7;
+        --apple-card-bg: #ffffff;
       }
 
       body {
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
-        background-image: url('https://images.unsplash.com/photo-1621360841013-c768371e93cf?q=80&w=2560&auto=format&fit=crop'); /* macOS Big Sur Abstract Wallpaper Style */
-        background-size: cover;
-        background-attachment: fixed;
-        background-position: center;
-        color: #1d1d1f;
+        font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
+        background-color: var(--apple-bg);
+        color: var(--apple-dark);
         -webkit-font-smoothing: antialiased;
-        overflow: hidden; /* App-like feel */
+        overflow-x: hidden;
+      }
+      
+      .dark body {
+        background-color: #000000;
+        color: #F5F5F7;
       }
 
-      /* Scrollbar */
+      /* Refined Scrollbar */
       ::-webkit-scrollbar {
-        width: 8px;
-        height: 8px;
-      }
-      ::-webkit-scrollbar-track {
+        width: 0px; 
         background: transparent;
-      }
-      ::-webkit-scrollbar-thumb {
-        background-color: rgba(0, 0, 0, 0.2);
-        border-radius: 10px;
-        border: 2px solid transparent;
-        background-clip: content-box;
-      }
-      ::-webkit-scrollbar-thumb:hover {
-        background-color: rgba(0, 0, 0, 0.4);
       }
 
       /* Utilities */
-      .glass {
-        background: var(--mac-window-bg);
-        backdrop-filter: blur(20px);
-        -webkit-backdrop-filter: blur(20px);
-        border: 1px solid rgba(255, 255, 255, 0.4);
+      .apple-card {
+        background: white;
+        border-radius: 28px;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.02), 0 2px 4px -1px rgba(0, 0, 0, 0.02);
+        transition: all 0.4s cubic-bezier(0.25, 1, 0.5, 1);
       }
       
-      .glass-sidebar {
-        background: var(--mac-sidebar-bg);
-        backdrop-filter: blur(25px);
-        -webkit-backdrop-filter: blur(25px);
-        border-right: 1px solid var(--mac-border);
+      .dark .apple-card {
+        background: #1C1C1E;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2);
+        border: 1px solid rgba(255,255,255,0.1);
+      }
+      
+      .apple-card:hover {
+        transform: scale(1.01);
+        box-shadow: 0 20px 30px -10px rgba(0, 0, 0, 0.08);
+      }
+      
+      .dark .apple-card:hover {
+        box-shadow: 0 20px 30px -10px rgba(0, 0, 0, 0.5);
       }
 
-      .mac-shadow {
-        box-shadow: 0 10px 30px rgba(0,0,0,0.12), 0 1px 3px rgba(0,0,0,0.05);
+      .apple-button {
+        background-color: var(--apple-blue);
+        color: white;
+        border-radius: 9999px;
+        transition: all 0.2s ease;
+      }
+      
+      .dark .apple-button {
+         background-color: #0A84FF;
+      }
+      
+      .apple-button:hover {
+        background-color: #0077ED;
+        transform: scale(1.02);
+      }
+      
+      .dark .apple-button:hover {
+        background-color: #409CFF;
+      }
+      
+      .animate-fade-in-up {
+        animation: fadeInUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        opacity: 0;
+        transform: translateY(30px);
+      }
+      
+      @keyframes fadeInUp {
+        to { opacity: 1; transform: translateY(0); }
       }
     </style>
   <script type="importmap">

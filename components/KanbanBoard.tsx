@@ -55,21 +55,21 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ jobs, onGenerateKit, onToggle
             return (
                 <div 
                     key={col.id}
-                    className="flex flex-col min-w-[320px] max-w-[320px] bg-[#E8E8ED]/50 rounded-[16px] p-2 h-full border border-white/50 backdrop-blur-sm"
+                    className="flex flex-col min-w-[320px] max-w-[320px] bg-[#E8E8ED]/50 dark:bg-[#1C1C1E]/50 rounded-[16px] p-2 h-full border border-white/50 dark:border-white/5 backdrop-blur-sm"
                     onDragOver={handleDragOver}
                     onDrop={(e) => handleDrop(e, col.id)}
                 >
                     <div className="flex items-center justify-between p-3 mb-1 shrink-0">
-                        <h3 className="font-semibold text-[13px] text-[#1d1d1f] flex items-center gap-2">
+                        <h3 className="font-semibold text-[13px] text-[#1d1d1f] dark:text-[#f5f5f7] flex items-center gap-2">
                             {col.icon} {col.title}
                         </h3>
-                        <span className="text-[10px] font-bold text-[#86868b] bg-white px-2 py-0.5 rounded-full shadow-sm">{col.count}</span>
+                        <span className="text-[10px] font-bold text-[#86868b] dark:text-[#98989D] bg-white dark:bg-[#2C2C2E] px-2 py-0.5 rounded-full shadow-sm">{col.count}</span>
                     </div>
                     
                     <div className="flex-1 space-y-2 overflow-y-auto px-1 pb-4 custom-scrollbar">
                         {colJobs.length === 0 && (
-                            <div className="h-20 border-2 border-dashed border-[#d2d2d7]/50 rounded-lg flex items-center justify-center">
-                                <span className="text-[10px] text-[#86868b] font-medium">Empty</span>
+                            <div className="h-20 border-2 border-dashed border-[#d2d2d7]/50 dark:border-[#38383A] rounded-lg flex items-center justify-center">
+                                <span className="text-[10px] text-[#86868b] dark:text-[#98989D] font-medium">Empty</span>
                             </div>
                         )}
                         {colJobs.map(job => (
