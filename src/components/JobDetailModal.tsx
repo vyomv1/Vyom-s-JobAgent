@@ -1,6 +1,6 @@
 
 import React, { useEffect, useState } from 'react';
-import { X, ExternalLink, Briefcase, Zap, FileText, Sparkles, Edit2, Save, Check, ChevronDown } from 'lucide-react';
+import { X, ExternalLink, Briefcase, Zap, FileText, Sparkles, Edit2, Save, Check, ChevronDown, RotateCw, TrendingUp, AlertTriangle } from 'lucide-react';
 import { Job } from '../types';
 
 interface JobDetailModalProps {
@@ -10,9 +10,10 @@ interface JobDetailModalProps {
   onGenerateKit: (job: Job) => void;
   initialTab?: 'brief' | 'strategy';
   onUpdateJob?: (job: Job) => void;
+  onReAnalyze?: (job: Job) => Promise<void>;
 }
 
-const JobDetailModal: React.FC<JobDetailModalProps> = ({ isOpen, onClose, job, onGenerateKit, initialTab = 'brief', onUpdateJob }) => {
+const JobDetailModal: React.FC<JobDetailModalProps> = ({ isOpen, onClose, job, onGenerateKit, initialTab = 'brief', onUpdateJob, onReAnalyze }) => {
   const [activeTab, setActiveTab] = useState<'brief' | 'strategy'>(initialTab);
   const [isEditingSummary, setIsEditingSummary] = useState(false);
   const [editedSummary, setEditedSummary] = useState('');
@@ -33,6 +34,13 @@ const JobDetailModal: React.FC<JobDetailModalProps> = ({ isOpen, onClose, job, o
   const [isEditingPostedDate, setIsEditingPostedDate] = useState(false);
   const [editedPostedDate, setEditedPostedDate] = useState('');
 
+  // URL Editing
+  const [isEditingUrl, setIsEditingUrl] = useState(false);
+  const [editedUrl, setEditedUrl] = useState('');
+
+  // Re-Analyze State
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+
   useEffect(() => {
     setActiveTab(initialTab);
   }, [initialTab, isOpen, job]);
@@ -44,6 +52,7 @@ const JobDetailModal: React.FC<JobDetailModalProps> = ({ isOpen, onClose, job, o
         setEditedCompany(job.company || '');
         setEditedLocation(job.location || '');
         setEditedPostedDate(job.postedDate || '');
+        setEditedUrl(job.url === 'Manual Entry' ? '' : (job.url || ''));
     }
   }, [job]);
 
@@ -59,7 +68,14 @@ const JobDetailModal: React.FC<JobDetailModalProps> = ({ isOpen, onClose, job, o
   if (!isOpen || !job) return null;
 
   const analysis = job.analysis;
-  const applyUrl = job.url || `https://www.google.com/search?q=${encodeURIComponent(`${job.title} ${job.company} jobs`)}`;
+  
+  // URL Logic
+  const getAbsoluteUrl = (url?: string) => {
+      if (!url || url === 'Manual Entry') return null;
+      return url.startsWith('http') ? url : `https://${url}`;
+  };
+
+  const applyUrl = getAbsoluteUrl(job.url) || `https://www.google.com/search?q=${encodeURIComponent(`${job.title} ${job.company} jobs`)}`;
 
   const handleSaveDescription = () => {
       if (onUpdateJob) {
@@ -96,24 +112,51 @@ const JobDetailModal: React.FC<JobDetailModalProps> = ({ isOpen, onClose, job, o
       setIsEditingPostedDate(false);
   };
 
+  const handleSaveUrl = () => {
+      if (onUpdateJob && editedUrl.trim() !== job.url) {
+          const finalUrl = editedUrl.trim() || 'Manual Entry';
+          onUpdateJob({ ...job, url: finalUrl });
+      }
+      setIsEditingUrl(false);
+  };
+
   const handleStatusChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
       if (onUpdateJob) {
           onUpdateJob({ ...job, status: e.target.value as Job['status'] });
       }
   };
 
+  const handleReAnalyzeClick = async () => {
+      if (onReAnalyze) {
+          setIsAnalyzing(true);
+          await onReAnalyze(job);
+          setIsAnalyzing(false);
+      }
+  };
+
+  const isValidAttribute = (attr?: string) => {
+      if (!attr) return false;
+      const lower = attr.toLowerCase();
+      return lower !== 'unspecified' && lower !== 'unknown' && lower !== 'n/a' && attr.trim() !== '';
+  };
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 transition-all duration-300">
+    <div 
+        className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 transition-all duration-300"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="job-detail-title"
+    >
       {/* Backdrop */}
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose}></div>
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} aria-hidden="true"></div>
 
       {/* Surface */}
       <div className="relative bg-[#F8F9FA] w-full max-w-5xl h-[90vh] flex flex-col shadow-2xl rounded-[28px] overflow-hidden border border-white/50 animate-in fade-in zoom-in-95 duration-200">
         
         {/* Header (Fixed) */}
-        <div className="flex items-center justify-between px-8 py-6 bg-white border-b border-[#DADCE0] shrink-0">
-           <div className="flex items-center gap-5 flex-1 mr-8">
-              <div className="w-14 h-14 bg-[#E8F0FE] text-[#1967D2] rounded-2xl flex items-center justify-center shadow-sm shrink-0">
+        <div className="flex items-center justify-between px-6 py-6 sm:px-8 bg-white border-b border-[#DADCE0] shrink-0">
+           <div className="flex items-center gap-5 flex-1 mr-4 sm:mr-8">
+              <div className="w-14 h-14 bg-[#E8F0FE] text-[#1967D2] rounded-2xl hidden sm:flex items-center justify-center shadow-sm shrink-0" aria-hidden="true">
                   <Briefcase size={28} />
               </div>
               <div className="flex-1 min-w-0">
@@ -124,16 +167,21 @@ const JobDetailModal: React.FC<JobDetailModalProps> = ({ isOpen, onClose, job, o
                         onChange={(e) => setEditedTitle(e.target.value)}
                         onBlur={handleSaveTitle}
                         onKeyDown={(e) => e.key === 'Enter' && handleSaveTitle()}
-                        className="text-2xl font-bold text-[#202124] w-full border-b-2 border-[#1a73e8] outline-none bg-transparent p-0"
+                        className="text-xl sm:text-2xl font-bold text-[#202124] w-full border-b-2 border-[#1a73e8] outline-none bg-transparent p-0"
                         autoFocus
+                        aria-label="Edit Job Title"
                       />
                   ) : (
                       <h2 
+                        id="job-detail-title"
                         onClick={() => setIsEditingTitle(true)}
-                        className="text-2xl font-bold text-[#202124] leading-tight truncate cursor-pointer hover:text-[#1a73e8] transition-colors flex items-center gap-2 group w-full"
+                        className="text-xl sm:text-2xl font-bold text-[#202124] leading-tight truncate cursor-pointer hover:text-[#1a73e8] transition-colors flex items-center gap-2 group w-full"
                         title="Click to edit title"
+                        role="button"
+                        tabIndex={0}
+                        onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && setIsEditingTitle(true)}
                       >
-                        {job.title} <Edit2 size={16} className="opacity-0 group-hover:opacity-100 text-[#1a73e8] transition-opacity" />
+                        {job.title} <Edit2 size={16} className="opacity-0 group-hover:opacity-100 text-[#1a73e8] transition-opacity" aria-label="Edit Title" />
                       </h2>
                   )}
                   
@@ -146,64 +194,88 @@ const JobDetailModal: React.FC<JobDetailModalProps> = ({ isOpen, onClose, job, o
                         onKeyDown={(e) => e.key === 'Enter' && handleSaveCompany()}
                         className="text-sm text-[#5F6368] font-medium mt-1 w-full border-b border-[#1a73e8] outline-none bg-transparent p-0"
                         autoFocus
+                        aria-label="Edit Company Name"
                       />
                   ) : (
                       <p 
                         onClick={() => setIsEditingCompany(true)}
                         className="text-sm text-[#5F6368] font-medium mt-1 truncate cursor-pointer hover:text-[#1a73e8] transition-colors flex items-center gap-2 group w-fit"
                         title="Click to edit company"
+                        role="button"
+                        tabIndex={0}
+                        onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && setIsEditingCompany(true)}
                       >
-                          {job.company} <Edit2 size={12} className="opacity-0 group-hover:opacity-100 text-[#1a73e8] transition-opacity" />
+                          {job.company} <Edit2 size={12} className="opacity-0 group-hover:opacity-100 text-[#1a73e8] transition-opacity" aria-label="Edit Company" />
                       </p>
                   )}
               </div>
            </div>
-           <button onClick={onClose} className="w-10 h-10 flex items-center justify-center hover:bg-[#F1F3F4] rounded-full text-[#5F6368] transition-colors shrink-0">
-             <X size={24} />
+           <button 
+                onClick={onClose} 
+                className="w-10 h-10 flex items-center justify-center hover:bg-[#F1F3F4] rounded-full text-[#5F6368] transition-colors shrink-0 focus:outline-none focus:ring-2 focus:ring-[#1a73e8]"
+                aria-label="Close Modal"
+           >
+             <X size={24} aria-hidden="true" />
            </button>
         </div>
 
         {/* Unified Scrollable Body */}
-        <div className="flex-1 overflow-y-auto custom-scrollbar p-8 bg-white">
+        <div className="flex-1 overflow-y-auto custom-scrollbar p-6 sm:p-8 bg-white">
             <div className="max-w-6xl mx-auto flex flex-col md:flex-row gap-12">
                 
                 {/* Main Content Area (Left) */}
                 <div className="flex-1 order-2 md:order-1">
                     
                     {/* Tabs */}
-                    <div className="flex items-center gap-2 mb-8 bg-[#F1F3F4] p-1 rounded-full w-fit border border-[#DADCE0]">
+                    <div className="flex items-center gap-2 mb-8 bg-[#F1F3F4] p-1 rounded-full w-fit border border-[#DADCE0]" role="tablist">
                         <button 
+                            role="tab"
+                            aria-selected={activeTab === 'brief'}
                             onClick={() => setActiveTab('brief')} 
                             className={`flex items-center gap-2 px-6 py-2 rounded-full text-xs font-bold transition-all ${activeTab === 'brief' ? 'bg-[#202124] text-white shadow-md' : 'text-[#5F6368] hover:bg-white/50'}`}
                         >
-                            <FileText size={14} /> Job Details
+                            <FileText size={14} aria-hidden="true" /> Job Details
                         </button>
                         <button 
+                            role="tab"
+                            aria-selected={activeTab === 'strategy'}
                             onClick={() => {
                                 setActiveTab('strategy');
                                 if (!analysis?.strategy) onGenerateKit(job);
                             }} 
                             className={`flex items-center gap-2 px-6 py-2 rounded-full text-xs font-bold transition-all ${activeTab === 'strategy' ? 'bg-[#202124] text-white shadow-md' : 'text-[#5F6368] hover:bg-white/50'}`}
                         >
-                            <Sparkles size={14} /> Strategy Kit
+                            <Sparkles size={14} aria-hidden="true" /> Strategy Kit
                         </button>
                     </div>
 
                     {activeTab === 'brief' ? (
-                        <div className="prose prose-slate max-w-none text-[#202124]">
+                        <div className="prose prose-slate max-w-none text-[#202124]" role="tabpanel">
                             {/* Tags */}
-                            <div className="mb-8 flex flex-wrap gap-3">
-                                {job.seniorityScore && (
+                            <div className="mb-8 flex flex-wrap gap-3" aria-label="Job Attributes">
+                                {analysis && analysis.isHighValue && (
+                                     <span className="px-3 py-1 rounded-full text-xs font-bold bg-[#E6F4EA] text-[#137333] border border-[#CEEAD6] flex items-center gap-1">
+                                        <TrendingUp size={14} aria-hidden="true" /> High Value
+                                     </span>
+                                )}
+                                {analysis && analysis.isCommuteRisk && (
+                                     <span className="px-3 py-1 rounded-full text-xs font-bold bg-[#FCE8E6] text-[#C5221F] border border-[#FAD2CF] flex items-center gap-1">
+                                        <AlertTriangle size={14} aria-hidden="true" /> Commute Risk
+                                     </span>
+                                )}
+                                {isValidAttribute(analysis?.industry) && (
+                                    <span className="px-3 py-1 rounded-full text-xs font-bold bg-[#FFF8E1] text-[#B06000] border border-[#FEEFC3]">
+                                        {analysis?.industry}
+                                    </span>
+                                )}
+                                {isValidAttribute(job.seniorityScore) && (
                                     <span className="px-3 py-1 bg-[#F1F3F4] text-[#202124] rounded-full text-xs font-bold border border-[#DADCE0]">{job.seniorityScore}</span>
                                 )}
-                                {analysis?.salary && (
-                                    <span className="px-3 py-1 bg-[#F1F3F4] text-[#202124] rounded-full text-xs font-bold border border-[#DADCE0]">{analysis.salary}</span>
+                                {isValidAttribute(analysis?.salary) && (
+                                    <span className="px-3 py-1 bg-[#F1F3F4] text-[#202124] rounded-full text-xs font-bold border border-[#DADCE0]">{analysis?.salary}</span>
                                 )}
-                                {analysis?.workPattern && (
-                                    <span className="px-3 py-1 bg-[#F1F3F4] text-[#202124] rounded-full text-xs font-bold border border-[#DADCE0]">{analysis.workPattern}</span>
-                                )}
-                                {analysis?.industry && (
-                                    <span className="px-3 py-1 bg-[#F1F3F4] text-[#202124] rounded-full text-xs font-bold border border-[#DADCE0]">{analysis.industry}</span>
+                                {isValidAttribute(analysis?.workPattern) && (
+                                    <span className="px-3 py-1 bg-[#F1F3F4] text-[#202124] rounded-full text-xs font-bold border border-[#DADCE0]">{analysis?.workPattern}</span>
                                 )}
                             </div>
 
@@ -214,15 +286,17 @@ const JobDetailModal: React.FC<JobDetailModalProps> = ({ isOpen, onClose, job, o
                                         <button 
                                             onClick={() => setIsEditingSummary(true)}
                                             className="text-xs font-bold text-[#1a73e8] hover:bg-[#E8F0FE] px-3 py-1.5 rounded-full flex items-center gap-1 transition-colors"
+                                            aria-label="Edit Job Description"
                                         >
-                                            <Edit2 size={12} /> Edit
+                                            <Edit2 size={12} aria-hidden="true" /> Edit
                                         </button>
                                     ) : (
                                         <button 
                                             onClick={handleSaveDescription}
                                             className="text-xs font-bold text-white bg-[#1a73e8] hover:bg-[#1557B0] px-3 py-1.5 rounded-full flex items-center gap-1 transition-colors shadow-sm"
+                                            aria-label="Save Job Description"
                                         >
-                                            <Save size={12} /> Save
+                                            <Save size={12} aria-hidden="true" /> Save
                                         </button>
                                     )}
                                 </div>
@@ -233,6 +307,7 @@ const JobDetailModal: React.FC<JobDetailModalProps> = ({ isOpen, onClose, job, o
                                         onChange={(e) => setEditedSummary(e.target.value)}
                                         className="w-full h-[400px] p-4 border border-[#1a73e8] rounded-xl text-base leading-relaxed focus:outline-none focus:ring-2 focus:ring-[#D2E3FC] bg-white text-[#3C4043] font-sans resize-y"
                                         placeholder="Paste full job description here..."
+                                        aria-label="Job Description"
                                     />
                                 ) : (
                                     <div className="text-[#3C4043] leading-relaxed whitespace-pre-wrap text-base border border-transparent rounded-xl p-0.5">
@@ -244,7 +319,7 @@ const JobDetailModal: React.FC<JobDetailModalProps> = ({ isOpen, onClose, job, o
                             {analysis && (
                                 <div className="mt-8">
                                     <h4 className="text-sm font-black text-[#1967D2] mb-2 flex items-center gap-2 uppercase tracking-wide">
-                                        <Zap size={16} className="fill-[#1967D2]" /> AI Summary
+                                        <Zap size={16} className="fill-[#1967D2]" aria-hidden="true" /> AI Summary
                                     </h4>
                                     <p className="text-[#202124] font-medium mb-6 leading-relaxed text-lg">{analysis.verdict}</p>
                                     
@@ -259,11 +334,11 @@ const JobDetailModal: React.FC<JobDetailModalProps> = ({ isOpen, onClose, job, o
                             )}
                         </div>
                     ) : (
-                        <div className="animate-in fade-in duration-300">
+                        <div className="animate-in fade-in duration-300" role="tabpanel">
                             <div className="flex items-center justify-between mb-6">
                                 <h3 className="text-xl font-bold text-[#202124]">Execution Strategy</h3>
                                 <button onClick={() => onGenerateKit(job)} className="text-sm font-bold text-[#1a73e8] hover:bg-[#E8F0FE] px-4 py-2 rounded-full transition-colors flex items-center gap-2">
-                                    <Sparkles size={16} /> Regenerate
+                                    <Sparkles size={16} aria-hidden="true" /> Regenerate
                                 </button>
                             </div>
                             
@@ -273,7 +348,7 @@ const JobDetailModal: React.FC<JobDetailModalProps> = ({ isOpen, onClose, job, o
                                 </div>
                             ) : (
                                 <div className="py-24 text-center text-[#70757A]">
-                                    <Zap size={48} className="mx-auto mb-4 text-[#DADCE0] animate-pulse" />
+                                    <Zap size={48} className="mx-auto mb-4 text-[#DADCE0] animate-pulse" aria-hidden="true" />
                                     <p className="text-lg font-medium">Generating your tailored strategy...</p>
                                     <p className="text-sm mt-2">Connecting your case studies to requirements.</p>
                                 </div>
@@ -285,9 +360,10 @@ const JobDetailModal: React.FC<JobDetailModalProps> = ({ isOpen, onClose, job, o
                 {/* Sidebar (Right) - Unified Scroll, No Boxes */}
                 <div className="w-full md:w-64 shrink-0 space-y-8 order-1 md:order-2">
                     <div className="relative">
-                        <span className="text-[10px] font-bold uppercase tracking-widest text-[#5F6368] mb-1 block">Status</span>
+                        <label htmlFor="status-select" className="text-[10px] font-bold uppercase tracking-widest text-[#5F6368] mb-1 block">Status</label>
                         <div className="relative">
                             <select 
+                                id="status-select"
                                 value={job.status || 'new'}
                                 onChange={handleStatusChange}
                                 className={`w-full appearance-none pl-4 pr-10 py-3 rounded-xl font-bold capitalize text-sm border focus:outline-none focus:ring-2 focus:ring-[#1a73e8] cursor-pointer transition-all ${
@@ -303,7 +379,7 @@ const JobDetailModal: React.FC<JobDetailModalProps> = ({ isOpen, onClose, job, o
                                 <option value="offer">Offer</option>
                                 <option value="archived">Archived</option>
                             </select>
-                            <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none opacity-50" />
+                            <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none opacity-50" aria-hidden="true" />
                         </div>
                     </div>
 
@@ -319,10 +395,11 @@ const JobDetailModal: React.FC<JobDetailModalProps> = ({ isOpen, onClose, job, o
                                 className="text-sm font-semibold text-[#202124] block w-full border-b border-[#1a73e8] outline-none bg-transparent p-0"
                                 autoFocus
                                 onClick={(e) => e.stopPropagation()}
+                                aria-label="Edit Location"
                              />
                         ) : (
                              <span className="text-sm font-semibold text-[#202124] block group-hover:text-[#1a73e8] transition-colors flex items-center justify-between">
-                                {job.location} <Edit2 size={12} className="opacity-0 group-hover:opacity-100 text-[#1a73e8]" />
+                                {job.location} <Edit2 size={12} className="opacity-0 group-hover:opacity-100 text-[#1a73e8]" aria-label="Edit Location" />
                              </span>
                         )}
                     </div>
@@ -339,24 +416,63 @@ const JobDetailModal: React.FC<JobDetailModalProps> = ({ isOpen, onClose, job, o
                                 className="text-sm font-semibold text-[#202124] block w-full border-b border-[#1a73e8] outline-none bg-transparent p-0"
                                 autoFocus
                                 onClick={(e) => e.stopPropagation()}
+                                aria-label="Edit Posted Date"
                              />
                         ) : (
                              <span className="text-sm font-semibold text-[#202124] block group-hover:text-[#1a73e8] transition-colors flex items-center justify-between">
-                                {job.postedDate || 'Recently'} <Edit2 size={12} className="opacity-0 group-hover:opacity-100 text-[#1a73e8]" />
+                                {job.postedDate || 'Recently'} <Edit2 size={12} className="opacity-0 group-hover:opacity-100 text-[#1a73e8]" aria-label="Edit Posted Date" />
                              </span>
                         )}
                     </div>
 
                     {analysis && (
                          <div>
-                            <span className="text-[10px] font-bold uppercase tracking-widest text-[#5F6368] mb-1 block">Match Score</span>
+                            <div className="flex items-center justify-between mb-1">
+                                <span className="text-[10px] font-bold uppercase tracking-widest text-[#5F6368]">Match Score</span>
+                                <button 
+                                    onClick={handleReAnalyzeClick}
+                                    disabled={isAnalyzing}
+                                    className={`text-[#1a73e8] hover:bg-[#E8F0FE] p-1 rounded-full transition-all ${isAnalyzing ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                    title="Re-analyze Job Score"
+                                    aria-label="Re-analyze Job Score"
+                                >
+                                    <RotateCw size={14} className={isAnalyzing ? "animate-spin" : ""} />
+                                </button>
+                            </div>
                             <span className="text-4xl font-black text-[#1a73e8] block">{analysis.score}<span className="text-sm text-[#5F6368] ml-1 font-bold">/100</span></span>
                         </div>
                     )}
 
                     <div className="pt-4 border-t border-[#F1F3F4]">
-                        <a href={applyUrl} target="_blank" rel="noreferrer" className="flex items-center justify-center gap-2 w-full py-3 bg-[#202124] text-white text-sm font-bold rounded-full hover:shadow-lg hover:bg-[#1a73e8] transition-all">
-                            Apply on Site <ExternalLink size={16} />
+                        <div className="flex items-center justify-between mb-2">
+                             <span className="text-[10px] font-bold uppercase tracking-widest text-[#5F6368]">Application Link</span>
+                             <button onClick={() => setIsEditingUrl(!isEditingUrl)} className="text-[#1a73e8] hover:bg-[#E8F0FE] p-1 rounded-full" aria-label="Edit Link">
+                                 <Edit2 size={12} />
+                             </button>
+                        </div>
+                        
+                        {isEditingUrl ? (
+                            <div className="mb-2">
+                                <input 
+                                    type="text"
+                                    value={editedUrl}
+                                    onChange={(e) => setEditedUrl(e.target.value)}
+                                    onBlur={handleSaveUrl}
+                                    onKeyDown={(e) => e.key === 'Enter' && handleSaveUrl()}
+                                    className="text-sm font-medium text-[#202124] w-full p-2 border border-[#1a73e8] rounded-lg outline-none bg-white"
+                                    autoFocus
+                                    placeholder="https://..."
+                                />
+                            </div>
+                        ) : null}
+
+                        <a 
+                            href={applyUrl} 
+                            target="_blank" 
+                            rel="noreferrer" 
+                            className="flex items-center justify-center gap-2 w-full py-3 bg-[#202124] text-white text-sm font-bold rounded-full hover:shadow-lg hover:bg-[#1a73e8] transition-all"
+                        >
+                            {getAbsoluteUrl(job.url) ? 'Apply on Site' : 'Search on Google'} <ExternalLink size={16} aria-hidden="true" />
                         </a>
                     </div>
                 </div>

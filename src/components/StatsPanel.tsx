@@ -56,13 +56,14 @@ const StatsPanel: React.FC<StatsPanelProps> = ({ jobs, selectedIndustry, onSelec
             <button 
                 onClick={() => onSelectIndustry(null)}
                 className="text-[10px] font-bold text-[#1a73e8] hover:bg-white px-2 py-1 rounded-md transition-colors"
+                aria-label="Clear Industry Filter"
             >
                 CLEAR
             </button>
         )}
       </div>
       
-      <div className="h-[180px] relative mb-6 cursor-pointer">
+      <div className="h-[180px] relative mb-6 cursor-pointer" aria-hidden="true">
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
             <Pie 
@@ -104,21 +105,23 @@ const StatsPanel: React.FC<StatsPanelProps> = ({ jobs, selectedIndustry, onSelec
         </div>
       </div>
       
-      <div className="space-y-2">
+      <div className="space-y-2" role="list">
         {data.map((entry, index) => {
           const isSelected = selectedIndustry === entry.name;
           return (
-            <div 
+            <button
                 key={entry.name} 
+                role="listitem"
                 onClick={() => onSelectIndustry(isSelected ? null : entry.name)}
-                className={`flex items-center justify-between text-xs cursor-pointer p-2 rounded-lg transition-colors ${isSelected ? 'bg-white shadow-sm' : 'hover:bg-white/50'}`}
+                className={`w-full flex items-center justify-between text-xs cursor-pointer p-2 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-[#1a73e8] ${isSelected ? 'bg-white shadow-sm' : 'hover:bg-white/50'}`}
+                aria-pressed={isSelected}
             >
                <div className="flex items-center gap-3">
-                 <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: COLORS[index % COLORS.length] }}></div>
+                 <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: COLORS[index % COLORS.length] }} aria-hidden="true"></div>
                  <span className={`font-semibold ${isSelected ? 'text-[#202124]' : 'text-[#5F6368]'}`}>{entry.name}</span>
                </div>
                <span className="font-bold text-[#202124]">{entry.value}</span>
-            </div>
+            </button>
           );
         })}
       </div>

@@ -104,6 +104,19 @@ const App: React.FC = () => {
       }
   };
 
+  const handleReAnalyzeJob = async (job: Job) => {
+      try {
+          const analysis = await analyzeJob(job);
+          await saveAnalysis(job.id, analysis);
+          const updatedJob = { ...job, analysis };
+          setSelectedJob(updatedJob);
+          // Manually update allJobs to reflect change immediately if needed, though subscription usually handles it
+          setAllJobs(prev => prev.map(j => j.id === job.id ? updatedJob : j));
+      } catch (e) {
+          console.error("Re-analysis failed", e);
+      }
+  };
+
   const handleGenerateKit = async (job: Job) => {
     if (!job.analysis) return;
     const content = await generateApplicationKit(job, job.analysis);
@@ -444,6 +457,7 @@ const App: React.FC = () => {
         onGenerateKit={handleGenerateKit}
         initialTab={initialModalTab}
         onUpdateJob={handleUpdateJob}
+        onReAnalyze={handleReAnalyzeJob}
       />
       
       <AddLinkModal 

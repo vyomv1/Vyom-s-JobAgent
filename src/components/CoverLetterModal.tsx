@@ -19,29 +19,38 @@ const CoverLetterModal: React.FC<CoverLetterModalProps> = ({ isOpen, onClose, jo
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+    <div 
+        className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="cover-letter-title"
+    >
       <div className="bg-white rounded-sm shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col border-t-4 border-[#86BC25]">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-100">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-black text-white rounded-sm">
+            <div className="p-2 bg-black text-white rounded-sm" aria-hidden="true">
                 <Briefcase size={20} />
             </div>
             <div>
-              <h2 className="text-xl font-bold text-black uppercase tracking-tight">Application Strategy Kit</h2>
+              <h2 id="cover-letter-title" className="text-xl font-bold text-black uppercase tracking-tight">Application Strategy Kit</h2>
               {job && <p className="text-sm text-gray-500 font-medium">Target: <span className="text-[#86BC25] font-bold">{job.title}</span> at {job.company}</p>}
             </div>
           </div>
-          <button onClick={onClose} className="text-gray-400 hover:text-black transition-colors">
-            <X size={24} />
+          <button 
+            onClick={onClose} 
+            className="text-gray-400 hover:text-black transition-colors focus:outline-none focus:ring-2 focus:ring-black"
+            aria-label="Close"
+          >
+            <X size={24} aria-hidden="true" />
           </button>
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto p-8 bg-gray-50">
+        <div className="flex-1 overflow-y-auto p-8 bg-gray-50" tabIndex={0}>
           {isGenerating ? (
-            <div className="flex flex-col items-center justify-center h-64 text-gray-500 gap-4">
-              <Loader2 size={40} className="animate-spin text-[#86BC25]" />
+            <div className="flex flex-col items-center justify-center h-64 text-gray-500 gap-4" aria-live="polite">
+              <Loader2 size={40} className="animate-spin text-[#86BC25]" aria-hidden="true" />
               <div>
                   <p className="text-lg font-bold text-black text-center">Formulating Strategy...</p>
                   <p className="text-sm opacity-75 text-center mt-1">Analyzing fit, prepping interview questions, and drafting letter.</p>
@@ -67,7 +76,7 @@ const CoverLetterModal: React.FC<CoverLetterModalProps> = ({ isOpen, onClose, jo
              disabled={isGenerating}
              className="px-6 py-2.5 text-xs font-bold uppercase tracking-wider text-white bg-black hover:bg-[#86BC25] hover:text-black rounded-sm shadow-lg flex items-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
            >
-             <Copy size={16} />
+             <Copy size={16} aria-hidden="true" />
              Copy Kit to Clipboard
            </button>
         </div>

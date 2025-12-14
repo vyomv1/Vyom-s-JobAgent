@@ -157,22 +157,22 @@ const CVEditor: React.FC = () => {
             {/* Toolbar - Sticky */}
             <div className="flex-none bg-[#F1F3F4] px-6 py-4 flex items-center gap-4 border-b border-[#DADCE0] z-10 sticky top-0 overflow-x-auto scrollbar-hide shadow-sm">
                 
-                <div className="flex items-center gap-1 bg-white p-1 rounded-full shadow-sm border border-[#DADCE0]">
-                    <button onClick={() => execCmd('undo')} className="p-2 hover:bg-[#F1F3F4] rounded-full text-[#5F6368] transition-colors"><RotateCcw size={16} /></button>
-                    <button onClick={() => execCmd('redo')} className="p-2 hover:bg-[#F1F3F4] rounded-full text-[#5F6368] transition-colors"><RotateCw size={16} /></button>
+                <div className="flex items-center gap-1 bg-white p-1 rounded-full shadow-sm border border-[#DADCE0]" role="toolbar" aria-label="History Controls">
+                    <button onClick={() => execCmd('undo')} className="p-2 hover:bg-[#F1F3F4] rounded-full text-[#5F6368] transition-colors" aria-label="Undo"><RotateCcw size={16} aria-hidden="true" /></button>
+                    <button onClick={() => execCmd('redo')} className="p-2 hover:bg-[#F1F3F4] rounded-full text-[#5F6368] transition-colors" aria-label="Redo"><RotateCw size={16} aria-hidden="true" /></button>
                 </div>
 
-                <div className="flex items-center gap-1 bg-white p-1 rounded-full shadow-sm border border-[#DADCE0]">
-                    <button onClick={() => execCmd('formatBlock', 'H2')} className="p-2 hover:bg-[#F1F3F4] rounded-full text-[#5F6368] font-bold" title="Heading"><Type size={16} /></button>
-                    <button onClick={() => execCmd('bold')} className="p-2 hover:bg-[#F1F3F4] rounded-full text-[#5F6368] font-bold"><Bold size={16} /></button>
-                    <button onClick={() => execCmd('italic')} className="p-2 hover:bg-[#F1F3F4] rounded-full text-[#5F6368] italic"><Italic size={16} /></button>
-                    <button onClick={() => execCmd('underline')} className="p-2 hover:bg-[#F1F3F4] rounded-full text-[#5F6368] underline"><Underline size={16} /></button>
+                <div className="flex items-center gap-1 bg-white p-1 rounded-full shadow-sm border border-[#DADCE0]" role="toolbar" aria-label="Formatting Controls">
+                    <button onClick={() => execCmd('formatBlock', 'H2')} className="p-2 hover:bg-[#F1F3F4] rounded-full text-[#5F6368] font-bold" title="Heading" aria-label="Heading 2"><Type size={16} aria-hidden="true" /></button>
+                    <button onClick={() => execCmd('bold')} className="p-2 hover:bg-[#F1F3F4] rounded-full text-[#5F6368] font-bold" aria-label="Bold"><Bold size={16} aria-hidden="true" /></button>
+                    <button onClick={() => execCmd('italic')} className="p-2 hover:bg-[#F1F3F4] rounded-full text-[#5F6368] italic" aria-label="Italic"><Italic size={16} aria-hidden="true" /></button>
+                    <button onClick={() => execCmd('underline')} className="p-2 hover:bg-[#F1F3F4] rounded-full text-[#5F6368] underline" aria-label="Underline"><Underline size={16} aria-hidden="true" /></button>
                 </div>
 
-                <div className="flex items-center gap-1 bg-white p-1 rounded-full shadow-sm border border-[#DADCE0]">
-                    <button onClick={() => execCmd('justifyLeft')} className="p-2 hover:bg-[#F1F3F4] rounded-full text-[#5F6368]"><AlignLeft size={16} /></button>
-                    <button onClick={() => execCmd('justifyCenter')} className="p-2 hover:bg-[#F1F3F4] rounded-full text-[#5F6368]"><AlignCenter size={16} /></button>
-                    <button onClick={() => execCmd('insertUnorderedList')} className="p-2 hover:bg-[#F1F3F4] rounded-full text-[#5F6368]"><List size={16} /></button>
+                <div className="flex items-center gap-1 bg-white p-1 rounded-full shadow-sm border border-[#DADCE0]" role="toolbar" aria-label="Alignment Controls">
+                    <button onClick={() => execCmd('justifyLeft')} className="p-2 hover:bg-[#F1F3F4] rounded-full text-[#5F6368]" aria-label="Align Left"><AlignLeft size={16} aria-hidden="true" /></button>
+                    <button onClick={() => execCmd('justifyCenter')} className="p-2 hover:bg-[#F1F3F4] rounded-full text-[#5F6368]" aria-label="Align Center"><AlignCenter size={16} aria-hidden="true" /></button>
+                    <button onClick={() => execCmd('insertUnorderedList')} className="p-2 hover:bg-[#F1F3F4] rounded-full text-[#5F6368]" aria-label="Bullet List"><List size={16} aria-hidden="true" /></button>
                 </div>
 
                 <div className="w-px h-6 bg-[#DADCE0]"></div>
@@ -183,13 +183,13 @@ const CVEditor: React.FC = () => {
                         onClick={() => initAI('impact')} 
                         className="flex items-center gap-2 px-4 py-2 bg-[#E8F0FE] text-[#1967D2] rounded-full text-sm font-bold hover:shadow-md transition-all hover:bg-[#D2E3FC]"
                     >
-                        <Search size={16} /> Impact Check
+                        <Search size={16} aria-hidden="true" /> Impact Check
                     </button>
                     <button 
                         onClick={() => initAI('clarify')} 
                         className="flex items-center gap-2 px-4 py-2 bg-[#F1F3F4] text-[#202124] rounded-full text-sm font-bold hover:shadow-md transition-all hover:bg-[#DADCE0]"
                     >
-                        <Wand2 size={16} /> Clarify
+                        <Wand2 size={16} aria-hidden="true" /> Clarify
                     </button>
                 </div>
 
@@ -198,12 +198,13 @@ const CVEditor: React.FC = () => {
                     onClick={() => setShowDoc(!showDoc)}
                     className={`flex items-center gap-2 px-3 py-2 rounded-full text-sm font-bold transition-all border ${showDoc ? 'bg-[#202124] text-white border-transparent' : 'bg-white text-[#5F6368] border-[#DADCE0] hover:bg-[#F1F3F4]'}`}
                     title="Toggle Reference Document"
+                    aria-label={showDoc ? "Hide Reference Document" : "Show Reference Document"}
                 >
-                    <BookOpen size={16} /> <span className="hidden xl:inline">Reference</span>
+                    <BookOpen size={16} aria-hidden="true" /> <span className="hidden xl:inline">Reference</span>
                 </button>
                 
-                 <div className="ml-auto flex items-center gap-2 text-xs font-medium text-[#5F6368] bg-white px-3 py-1.5 rounded-full border border-[#DADCE0]">
-                    <Save size={12} className={lastSaved ? 'text-green-600' : 'text-gray-400'} />
+                 <div className="ml-auto flex items-center gap-2 text-xs font-medium text-[#5F6368] bg-white px-3 py-1.5 rounded-full border border-[#DADCE0]" role="status">
+                    <Save size={12} className={lastSaved ? 'text-green-600' : 'text-gray-400'} aria-hidden="true" />
                     {lastSaved ? `Saved ${lastSaved}` : 'Unsaved'}
                 </div>
             </div>
@@ -213,6 +214,9 @@ const CVEditor: React.FC = () => {
                 <div 
                     ref={editorRef}
                     contentEditable
+                    role="textbox"
+                    aria-multiline="true"
+                    aria-label="CV Content Editor"
                     onPaste={handlePaste}
                     className="w-full max-w-[850px] min-h-[1100px] h-max bg-white shadow-sm hover:shadow-md border border-[#DADCE0] p-[72px] outline-none text-[#202124] font-sans text-lg leading-[1.6] transition-all rounded-sm mb-16"
                 />
@@ -223,11 +227,11 @@ const CVEditor: React.FC = () => {
         <div className={`absolute top-0 right-0 h-full w-[320px] bg-white border-l border-[#DADCE0] shadow-xl transform transition-transform duration-300 z-20 flex flex-col ${showAiPanel ? 'translate-x-0' : 'translate-x-full'}`}>
             <div className="p-5 border-b border-[#DADCE0] flex items-center justify-between bg-[#F8F9FA]">
                 <h3 className="font-bold text-[#202124] flex items-center gap-2">
-                    {aiMode === 'impact' ? <Search size={18} className="text-[#1a73e8]" /> : <Wand2 size={18} className="text-[#1a73e8]" />}
+                    {aiMode === 'impact' ? <Search size={18} className="text-[#1a73e8]" aria-hidden="true" /> : <Wand2 size={18} className="text-[#1a73e8]" aria-hidden="true" />}
                     {aiMode === 'impact' ? 'Impact Review' : 'Clarify Text'}
                 </h3>
-                <button onClick={closeAiPanel} className="p-1 hover:bg-[#F1F3F4] rounded-full text-[#5F6368]">
-                    <X size={20} />
+                <button onClick={closeAiPanel} className="p-1 hover:bg-[#F1F3F4] rounded-full text-[#5F6368]" aria-label="Close AI Panel">
+                    <X size={20} aria-hidden="true" />
                 </button>
             </div>
 
@@ -242,7 +246,7 @@ const CVEditor: React.FC = () => {
                 <div>
                     <label className="text-xs font-bold text-[#70757A] uppercase tracking-wider mb-2 block">Suggestion</label>
                     {isAiLoading ? (
-                        <div className="flex flex-col items-center py-8 gap-3">
+                        <div className="flex flex-col items-center py-8 gap-3" role="status">
                             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#1a73e8]"></div>
                             <span className="text-xs text-[#5F6368] animate-pulse">Polishing your words...</span>
                         </div>
@@ -260,7 +264,7 @@ const CVEditor: React.FC = () => {
                     disabled={isAiLoading || !aiSuggestion}
                     className="w-full py-3 bg-[#1a73e8] text-white rounded-xl font-bold hover:bg-[#1557B0] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-sm"
                 >
-                    <Check size={18} /> Apply Change
+                    <Check size={18} aria-hidden="true" /> Apply Change
                 </button>
             </div>
         </div>
