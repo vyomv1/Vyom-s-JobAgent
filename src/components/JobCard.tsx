@@ -27,24 +27,24 @@ const JobCard: React.FC<JobCardProps> = ({ job, onOpenDetail, onToggleStatus, on
   if (isKanban) {
       return (
         <div 
-            className="bg-white rounded-[12px] p-3 cursor-pointer shadow-[0_1px_3px_rgba(0,0,0,0.06)] hover:shadow-[0_4px_8px_rgba(0,0,0,0.08)] transition-all flex flex-col gap-1.5 border border-transparent hover:border-[#0071e3]/30"
+            className="bg-white rounded-[12px] p-4 cursor-pointer shadow-[0_1px_3px_rgba(0,0,0,0.06)] hover:shadow-[0_4px_8px_rgba(0,0,0,0.08)] transition-all flex flex-col gap-2 border border-transparent hover:border-[#0071e3]/30"
             onClick={() => onOpenDetail(job)}
         >
             <div className="flex justify-between items-start gap-1">
-                <h4 className="font-semibold text-[12px] text-[#1d1d1f] leading-tight line-clamp-2">
+                <h4 className="font-bold text-[15px] text-[#1d1d1f] leading-snug line-clamp-2">
                     {job.title}
                 </h4>
             </div>
             
-            <p className="text-[10px] text-[#86868b] font-medium truncate">{job.company}</p>
+            <p className="text-[13px] text-[#86868b] font-medium truncate">{job.company}</p>
             
-            <div className="flex items-center justify-between mt-0.5">
+            <div className="flex items-center justify-between mt-2">
                  {analysis?.score ? (
-                     <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${analysis.score > 70 ? 'bg-[#E6F4EA] text-[#137333]' : 'bg-[#F5F5F7] text-[#5F6368]'}`}>
+                     <span className={`px-2 py-0.5 rounded text-[11px] font-bold ${analysis.score > 70 ? 'bg-[#E6F4EA] text-[#137333]' : 'bg-[#F5F5F7] text-[#5F6368]'}`}>
                         {analysis.score}%
                      </span>
                  ) : (
-                    <span className="text-[9px] text-[#d2d2d7]">No Score</span>
+                    <span className="text-[10px] text-[#d2d2d7]">No Score</span>
                  )}
                  <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: job.seniorityScore === 'Senior' || job.seniorityScore === 'Lead' ? '#34C759' : '#FFCC00' }}></div>
             </div>

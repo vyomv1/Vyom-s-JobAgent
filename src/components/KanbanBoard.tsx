@@ -55,7 +55,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ jobs, onGenerateKit, onToggle
             return (
                 <div 
                     key={col.id}
-                    className="flex flex-col min-w-[260px] max-w-[260px] bg-[#E8E8ED]/50 rounded-[16px] p-2 h-full border border-white/50 backdrop-blur-sm"
+                    className="flex flex-col min-w-[320px] max-w-[320px] bg-[#E8E8ED]/50 rounded-[16px] p-2 h-full border border-white/50 backdrop-blur-sm"
                     onDragOver={handleDragOver}
                     onDrop={(e) => handleDrop(e, col.id)}
                 >

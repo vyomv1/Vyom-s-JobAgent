@@ -270,8 +270,9 @@ const App: React.FC = () => {
                     {/* DASHBOARD GRID LAYOUT */}
                     <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
                         
-                        {/* LEFT COLUMN: FILTERS & WIDGETS - Sticky behavior restored */}
-                        <div className="lg:col-span-3 space-y-6 sticky top-24">
+                        {/* LEFT COLUMN: FILTERS & WIDGETS */}
+                        {/* MOVED sticky class to the parent column and added self-start to ensure it sticks */}
+                        <div className="lg:col-span-3 space-y-6 sticky top-[56px] self-start z-10">
                             {/* Filter Widget */}
                             <div className="bg-white rounded-[24px] p-5 shadow-sm border border-black/5">
                                 <h3 className="text-[11px] font-bold text-[#86868b] uppercase tracking-wider mb-3">Locations</h3>
