@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { X, Link, FileText, AlignLeft, Building2, Type } from 'lucide-react';
+import { X, Link, FileText, Building2, Type } from 'lucide-react';
 
 interface AddLinkModalProps {
   isOpen: boolean;
@@ -43,139 +43,118 @@ const AddLinkModal: React.FC<AddLinkModalProps> = ({ isOpen, onClose, onAdd }) =
 
   return (
     <div 
-        className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4"
+        className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
         role="dialog"
         aria-modal="true"
-        aria-labelledby="add-job-title"
     >
-      <div className="bg-white rounded-[24px] shadow-xl w-full max-w-lg p-0 animate-in fade-in zoom-in-95 duration-200 border border-[#DADCE0] overflow-hidden">
+      <div className="bg-white rounded-[32px] shadow-2xl w-full max-w-lg p-0 animate-in fade-in zoom-in-95 duration-200 overflow-hidden">
         
         {/* Header with Tabs */}
-        <div className="bg-[#F8F9FA] border-b border-[#DADCE0] px-6 py-4 flex items-center justify-between">
-            <h2 id="add-job-title" className="sr-only">Add New Job</h2>
-            <div className="flex bg-white rounded-full p-1 border border-[#DADCE0] shadow-sm" role="tablist">
-                <button 
-                    role="tab"
-                    aria-selected={mode === 'link'}
-                    onClick={() => setMode('link')}
-                    className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all flex items-center gap-2 ${mode === 'link' ? 'bg-[#1a73e8] text-white shadow-sm' : 'text-[#5F6368] hover:bg-[#F1F3F4]'}`}
-                >
-                    <Link size={14} aria-hidden="true" /> Link
-                </button>
-                <button 
-                    role="tab"
-                    aria-selected={mode === 'text'}
-                    onClick={() => setMode('text')}
-                    className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all flex items-center gap-2 ${mode === 'text' ? 'bg-[#1a73e8] text-white shadow-sm' : 'text-[#5F6368] hover:bg-[#F1F3F4]'}`}
-                >
-                    <FileText size={14} aria-hidden="true" /> Paste Text
-                </button>
-            </div>
+        <div className="bg-white px-8 pt-8 pb-4 flex items-center justify-between">
+            <h2 className="text-[24px] font-semibold text-[#1d1d1f]">Add Job</h2>
             <button 
                 onClick={onClose} 
-                className="p-2 hover:bg-[#E8EAED] rounded-full text-[#5F6368] transition-colors focus:outline-none focus:ring-2 focus:ring-[#1a73e8]"
-                aria-label="Close"
+                className="w-8 h-8 flex items-center justify-center bg-[#f5f5f7] hover:bg-[#e8e8ed] rounded-full text-[#1d1d1f] transition-colors"
             >
-                <X size={20} aria-hidden="true" />
+                <X size={18} />
             </button>
         </div>
+
+        <div className="px-8 pb-6">
+            <div className="flex bg-[#f5f5f7] rounded-full p-1 w-fit" role="tablist">
+                <button 
+                    onClick={() => setMode('link')}
+                    className={`px-5 py-2 rounded-full text-[13px] font-semibold transition-all ${mode === 'link' ? 'bg-white text-black shadow-sm' : 'text-[#86868b] hover:text-[#1d1d1f]'}`}
+                >
+                    Link
+                </button>
+                <button 
+                    onClick={() => setMode('text')}
+                    className={`px-5 py-2 rounded-full text-[13px] font-semibold transition-all ${mode === 'text' ? 'bg-white text-black shadow-sm' : 'text-[#86868b] hover:text-[#1d1d1f]'}`}
+                >
+                    Text
+                </button>
+            </div>
+        </div>
         
-        <form onSubmit={handleSubmit} className="p-6">
+        <form onSubmit={handleSubmit} className="px-8 pb-8">
           {mode === 'link' ? (
-              <div className="mb-6" role="tabpanel">
-                <label htmlFor="job-url" className="block text-xs font-bold text-[#5F6368] uppercase tracking-wider mb-2">Job URL</label>
+              <div className="mb-8">
+                <label htmlFor="job-url" className="block text-[11px] font-bold text-[#86868b] uppercase tracking-wider mb-2">Job URL</label>
                 <div className="relative">
-                    <Link className="absolute left-3 top-1/2 -translate-y-1/2 text-[#9AA0A6]" size={18} aria-hidden="true" />
+                    <Link className="absolute left-4 top-1/2 -translate-y-1/2 text-[#86868b]" size={18} />
                     <input 
                         id="job-url"
                         type="url" 
                         value={url}
                         onChange={(e) => setUrl(e.target.value)}
-                        placeholder="https://linkedin.com/jobs/..." 
-                        className="w-full pl-10 pr-4 py-3 bg-[#F8F9FA] border border-[#DADCE0] rounded-xl focus:border-[#1a73e8] focus:ring-1 focus:ring-[#1a73e8] outline-none text-[#202124] transition-all"
+                        placeholder="Paste link here..." 
+                        className="w-full pl-12 pr-4 py-4 bg-[#f5f5f7] rounded-2xl font-medium text-[#1d1d1f] focus:ring-2 focus:ring-[#0071e3] outline-none transition-all placeholder:text-[#86868b]"
                         autoFocus
                         required
                     />
                 </div>
-                <p className="text-xs text-[#70757A] mt-2 ml-1">Best for public links (Indeed, Company Sites).</p>
               </div>
           ) : (
-              <div className="space-y-4 mb-6" role="tabpanel">
+              <div className="space-y-4 mb-8">
                   <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <label htmlFor="manual-title" className="block text-xs font-bold text-[#5F6368] uppercase tracking-wider mb-2">Job Title</label>
-                        <div className="relative">
-                            <Type className="absolute left-3 top-1/2 -translate-y-1/2 text-[#9AA0A6]" size={16} aria-hidden="true" />
-                            <input 
-                                id="manual-title"
-                                type="text" 
-                                value={manualTitle}
-                                onChange={(e) => setManualTitle(e.target.value)}
-                                placeholder="e.g. Senior Designer" 
-                                className="w-full pl-9 pr-4 py-2.5 bg-[#F8F9FA] border border-[#DADCE0] rounded-xl focus:border-[#1a73e8] outline-none text-sm font-medium"
-                            />
-                        </div>
+                        <label className="block text-[11px] font-bold text-[#86868b] uppercase tracking-wider mb-2">Title</label>
+                        <input 
+                            type="text" 
+                            value={manualTitle}
+                            onChange={(e) => setManualTitle(e.target.value)}
+                            className="w-full px-4 py-3 bg-[#f5f5f7] rounded-xl text-[14px] font-medium outline-none focus:ring-2 focus:ring-[#0071e3]"
+                        />
                       </div>
                       <div>
-                        <label htmlFor="manual-company" className="block text-xs font-bold text-[#5F6368] uppercase tracking-wider mb-2">Company</label>
-                        <div className="relative">
-                            <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 text-[#9AA0A6]" size={16} aria-hidden="true" />
-                            <input 
-                                id="manual-company"
-                                type="text" 
-                                value={manualCompany}
-                                onChange={(e) => setManualCompany(e.target.value)}
-                                placeholder="e.g. Google" 
-                                className="w-full pl-9 pr-4 py-2.5 bg-[#F8F9FA] border border-[#DADCE0] rounded-xl focus:border-[#1a73e8] outline-none text-sm font-medium"
-                            />
-                        </div>
+                        <label className="block text-[11px] font-bold text-[#86868b] uppercase tracking-wider mb-2">Company</label>
+                        <input 
+                            type="text" 
+                            value={manualCompany}
+                            onChange={(e) => setManualCompany(e.target.value)}
+                            className="w-full px-4 py-3 bg-[#f5f5f7] rounded-xl text-[14px] font-medium outline-none focus:ring-2 focus:ring-[#0071e3]"
+                        />
                       </div>
                   </div>
 
                   <div>
-                    <label htmlFor="manual-url" className="block text-xs font-bold text-[#5F6368] uppercase tracking-wider mb-2">Application Link (Optional)</label>
-                    <div className="relative">
-                        <Link className="absolute left-3 top-1/2 -translate-y-1/2 text-[#9AA0A6]" size={16} aria-hidden="true" />
-                        <input 
-                            id="manual-url"
-                            type="url" 
-                            value={manualUrl}
-                            onChange={(e) => setManualUrl(e.target.value)}
-                            placeholder="https://..." 
-                            className="w-full pl-9 pr-4 py-2.5 bg-[#F8F9FA] border border-[#DADCE0] rounded-xl focus:border-[#1a73e8] outline-none text-sm font-medium"
-                        />
-                    </div>
+                     <label className="block text-[11px] font-bold text-[#86868b] uppercase tracking-wider mb-2">Link (Apply URL)</label>
+                     <input 
+                        type="url" 
+                        value={manualUrl}
+                        onChange={(e) => setManualUrl(e.target.value)}
+                        placeholder="https://..."
+                        className="w-full px-4 py-3 bg-[#f5f5f7] rounded-xl text-[14px] font-medium outline-none focus:ring-2 focus:ring-[#0071e3]"
+                    />
                   </div>
 
                   <div>
-                    <label htmlFor="manual-description" className="block text-xs font-bold text-[#5F6368] uppercase tracking-wider mb-2">Job Description</label>
+                    <label className="block text-[11px] font-bold text-[#86868b] uppercase tracking-wider mb-2">Description</label>
                     <textarea 
-                        id="manual-description"
                         value={text}
                         onChange={(e) => setText(e.target.value)}
-                        placeholder="Paste the full job description here..." 
-                        className="w-full p-4 h-32 bg-[#F8F9FA] border border-[#DADCE0] rounded-xl focus:border-[#1a73e8] focus:ring-1 focus:ring-[#1a73e8] outline-none text-[#202124] transition-all resize-none text-sm leading-relaxed"
-                        autoFocus
+                        placeholder="Paste job description..." 
+                        className="w-full p-4 h-32 bg-[#f5f5f7] rounded-xl font-medium text-[14px] outline-none focus:ring-2 focus:ring-[#0071e3] resize-none"
                         required
                     />
                   </div>
               </div>
           )}
           
-          <div className="flex justify-end gap-3 pt-2 border-t border-[#F1F3F4]">
+          <div className="flex justify-end gap-3 pt-4 border-t border-[#f5f5f7]">
             <button 
                 type="button" 
                 onClick={onClose}
-                className="px-5 py-2.5 text-sm font-bold text-[#5F6368] hover:bg-[#F1F3F4] rounded-full transition-colors"
+                className="px-6 py-3 text-[14px] font-semibold text-[#86868b] hover:bg-[#f5f5f7] rounded-full transition-colors"
             >
                 Cancel
             </button>
             <button 
                 type="submit"
-                className="px-6 py-2.5 text-sm font-bold text-white bg-[#1a73e8] hover:bg-[#1557B0] rounded-full transition-colors shadow-sm flex items-center gap-2"
+                className="px-8 py-3 text-[14px] font-semibold text-white bg-[#0071e3] hover:bg-[#0077ED] rounded-full transition-colors shadow-lg shadow-blue-500/20"
             >
-                {mode === 'link' ? <Link size={16} aria-hidden="true" /> : <FileText size={16} aria-hidden="true" />}
-                {mode === 'link' ? 'Scout URL' : 'Analyze Text'}
+                {mode === 'link' ? 'Scout' : 'Analyze'}
             </button>
           </div>
         </form>

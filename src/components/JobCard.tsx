@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Job } from '../types';
-import { AlertTriangle, Briefcase, MapPin, ExternalLink, FileText, TrendingUp, Trash2, Clock, Zap, Bookmark, Archive } from 'lucide-react';
+import { AlertTriangle, Briefcase, MapPin, ExternalLink, TrendingUp, Trash2, Bookmark, Archive, Zap, ArrowRight } from 'lucide-react';
 
 interface JobCardProps {
   job: Job;
@@ -23,153 +23,120 @@ const JobCard: React.FC<JobCardProps> = ({ job, onOpenDetail, onToggleStatus, on
 
   const applyUrl = getAbsoluteUrl(job.url) || `https://www.google.com/search?q=${encodeURIComponent(`${job.title} ${job.company} jobs`)}`;
 
+  // Tiny Card for Kanban - Ultra Compact
   if (isKanban) {
       return (
         <div 
-            className="bg-white p-4 rounded-2xl shadow-sm border border-[#DADCE0] hover:shadow-md transition-all group flex flex-col gap-3 relative cursor-pointer hover:border-[#1a73e8] focus-within:ring-2 focus-within:ring-[#1a73e8] outline-none"
-            tabIndex={0}
-            role="button"
-            aria-label={`View details for ${job.title} at ${job.company}`}
+            className="bg-white rounded-[12px] p-3 cursor-pointer shadow-[0_1px_3px_rgba(0,0,0,0.06)] hover:shadow-[0_4px_8px_rgba(0,0,0,0.08)] transition-all flex flex-col gap-1.5 border border-transparent hover:border-[#0071e3]/30"
             onClick={() => onOpenDetail(job)}
-            onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault();
-                    onOpenDetail(job);
-                }
-            }}
         >
-            <div className="flex justify-between items-start gap-2">
-                <h4 className="font-bold text-sm text-[#202124] leading-snug line-clamp-2 group-hover:text-[#1a73e8] transition-colors">
+            <div className="flex justify-between items-start gap-1">
+                <h4 className="font-semibold text-[12px] text-[#1d1d1f] leading-tight line-clamp-2">
                     {job.title}
                 </h4>
-                {analysis && (
-                    <div 
-                        className={`shrink-0 w-2 h-2 rounded-full ${analysis.isHighValue ? 'bg-[#34A853]' : 'bg-[#DADCE0]'}`} 
-                        title={analysis.isHighValue ? "High Value" : "Standard"}
-                        aria-label={analysis.isHighValue ? "High Value Job" : "Standard Job"}
-                    ></div>
-                )}
             </div>
             
-            <p className="text-xs font-medium text-[#5F6368] line-clamp-1">{job.company}</p>
+            <p className="text-[10px] text-[#86868b] font-medium truncate">{job.company}</p>
             
-            <div className="flex items-center gap-2 mt-2 pt-3 border-t border-[#F1F3F4]">
-                <button 
-                    onClick={(e) => { e.stopPropagation(); onOpenDetail(job); }} 
-                    className="w-full py-2 text-xs font-bold text-[#70757A] hover:bg-[#E8F0FE] hover:text-[#1967D2] rounded-md transition-colors bg-[#F1F3F4] flex items-center justify-center gap-2 focus:outline-none focus:ring-2 focus:ring-[#1a73e8] focus:ring-offset-1"
-                    aria-label="View Details"
-                >
-                    <FileText size={14} aria-hidden="true" /> View Details
-                </button>
+            <div className="flex items-center justify-between mt-0.5">
+                 {analysis?.score ? (
+                     <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${analysis.score > 70 ? 'bg-[#E6F4EA] text-[#137333]' : 'bg-[#F5F5F7] text-[#5F6368]'}`}>
+                        {analysis.score}%
+                     </span>
+                 ) : (
+                    <span className="text-[9px] text-[#d2d2d7]">No Score</span>
+                 )}
+                 <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: job.seniorityScore === 'Senior' || job.seniorityScore === 'Lead' ? '#34C759' : '#FFCC00' }}></div>
             </div>
         </div>
       );
   }
 
+  // Full "Bento" Card for Dashboard
   return (
-    <div className={`bg-white rounded-3xl p-8 shadow-sm hover:shadow-lg transition-all duration-300 border border-[#DADCE0] relative group overflow-hidden ${status === 'archived' ? 'opacity-50 grayscale' : ''}`}>
+    <div 
+        onClick={() => onOpenDetail(job)}
+        className={`apple-card p-8 group cursor-pointer border border-transparent relative hover:border-[#0071e3]/10 ${status === 'archived' ? 'opacity-60 grayscale' : ''}`}
+    >
       
-      {/* Top Right Actions */}
-      <div className="absolute top-6 right-6 flex items-center gap-2">
-         <button 
-            onClick={() => onDelete(job.id)} 
-            className="p-2.5 text-[#70757A] hover:text-[#DB4437] hover:bg-[#FCE8E6] rounded-full transition-all focus:outline-none focus:ring-2 focus:ring-[#DB4437]" 
-            title={status === 'archived' ? "Delete Permanently" : "Archive"}
-            aria-label={status === 'archived' ? "Delete Permanently" : "Archive Job"}
-         >
-            {status === 'archived' ? <Trash2 size={18} aria-hidden="true" /> : <Archive size={18} aria-hidden="true" />}
-         </button>
-         
+      {/* Top Right Actions (No Overlap) */}
+      <div className="absolute top-6 right-6 flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity z-10">
          {status !== 'archived' && (
              <button 
-                onClick={() => onToggleStatus(job.id, status)}
-                className={`p-2.5 rounded-full transition-all border focus:outline-none focus:ring-2 focus:ring-[#1a73e8] ${isSavedOrBetter 
-                    ? 'bg-[#1a73e8] text-white border-[#1a73e8] shadow-md' 
-                    : 'bg-white text-[#70757A] border-[#DADCE0] hover:border-[#5F6368]'}`}
-                aria-label={isSavedOrBetter ? "Unsave Job" : "Save Job"}
+                onClick={(e) => { e.stopPropagation(); onToggleStatus(job.id, status); }}
+                className={`w-9 h-9 flex items-center justify-center rounded-full transition-colors shadow-sm ${isSavedOrBetter 
+                    ? 'bg-[#0071e3] text-white hover:bg-[#0077ED]' 
+                    : 'bg-white text-[#86868b] border border-[#d2d2d7] hover:border-[#0071e3] hover:text-[#0071e3]'}`}
+                title={isSavedOrBetter ? "Saved" : "Save Job"}
              >
-                 <Bookmark size={18} fill={isSavedOrBetter ? "currentColor" : "none"} aria-hidden="true" />
+                 <Bookmark size={16} fill={isSavedOrBetter ? "currentColor" : "none"} />
              </button>
          )}
+         
+         <button 
+            onClick={(e) => { e.stopPropagation(); onDelete(job.id); }} 
+            className="w-9 h-9 flex items-center justify-center rounded-full bg-white border border-[#d2d2d7] hover:bg-[#FF3B30] hover:text-white hover:border-[#FF3B30] text-[#86868b] transition-colors shadow-sm"
+            title="Archive"
+         >
+            {status === 'archived' ? <Trash2 size={16} /> : <Archive size={16} />}
+         </button>
       </div>
 
-      <div className="flex flex-col md:flex-row gap-8">
-          {/* Score Circle */}
-          <div className="shrink-0" aria-hidden="true">
-             {analysis ? (
-                 <div className="w-20 h-20 rounded-full bg-[#E8F0FE] text-[#1967D2] flex flex-col items-center justify-center border-4 border-white shadow-sm ring-1 ring-[#D2E3FC]">
-                    <span className="text-2xl font-black tracking-tight">{analysis.score}</span>
-                    <span className="text-[10px] font-bold uppercase tracking-wider opacity-70">Score</span>
-                 </div>
-             ) : (
-                 <div className="w-20 h-20 rounded-full bg-[#F1F3F4] border-4 border-white shadow-sm flex items-center justify-center animate-pulse">
-                     <span className="text-[10px] font-bold text-[#70757A]">SCAN</span>
-                 </div>
-             )}
-          </div>
-
+      <div className="flex flex-col sm:flex-row gap-6 items-start">
+          
+          {/* Main Content */}
           <div className="flex-1 pr-12">
-             <div 
-                className="cursor-pointer group/title focus:outline-none" 
-                onClick={() => onOpenDetail(job)}
-                role="button"
-                tabIndex={0}
-                onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault();
-                        onOpenDetail(job);
-                    }
-                }}
-             >
-                <h3 className="text-2xl font-bold text-[#202124] group-hover/title:text-[#1a73e8] transition-colors leading-tight mb-2 flex items-start gap-2">
+             <div className="mb-2 flex items-center gap-3">
+                 <h3 className="text-[22px] font-semibold text-[#1d1d1f] tracking-tight group-hover:text-[#0071e3] transition-colors">
                     {job.title}
-                    {job.isRelatedDiscovery && <Zap size={18} className="text-[#F4B400] fill-[#F4B400] mt-1" aria-label="Related Discovery" />}
-                </h3>
-                <div className="flex flex-wrap items-center gap-6 text-sm font-medium text-[#5F6368]">
-                    <span className="flex items-center gap-1.5"><Briefcase size={16} className="text-[#70757A]" aria-hidden="true" /> {job.company}</span>
-                    <span className="flex items-center gap-1.5"><MapPin size={16} className="text-[#70757A]" aria-hidden="true" /> {job.location}</span>
-                    {job.postedDate && <span className="flex items-center gap-1.5"><Clock size={16} className="text-[#70757A]" aria-hidden="true" /> {job.postedDate}</span>}
-                </div>
+                 </h3>
+                 {job.isRelatedDiscovery && <span className="bg-[#FFCC00] text-white text-[10px] font-bold px-1.5 py-0.5 rounded">NEW</span>}
+             </div>
+             
+             <div className="flex items-center gap-4 text-[13px] font-medium text-[#86868b] mb-5">
+                <span className="flex items-center gap-1.5"><Briefcase size={14}/> {job.company}</span>
+                <span className="w-1 h-1 bg-[#d2d2d7] rounded-full"></span>
+                <span className="flex items-center gap-1.5"><MapPin size={14}/> {job.location}</span>
+                <span className="w-1 h-1 bg-[#d2d2d7] rounded-full"></span>
+                <span>{job.postedDate}</span>
              </div>
 
-             {/* Tags - Always Visible with Google Colors */}
-             <div className="flex flex-wrap items-center gap-2 mt-4 mb-6" aria-label="Job Tags">
-                {job.seniorityScore && (
-                     <span className="px-3 py-1 rounded-full text-xs font-bold bg-[#E8F0FE] text-[#1967D2] border border-[#D2E3FC]">{job.seniorityScore}</span>
+             {/* Chip Row */}
+             <div className="flex flex-wrap items-center gap-2 mb-6">
+                {/* Match Badge Replaces Ring */}
+                {analysis?.score && (
+                     <span className={`px-3 py-1 rounded-full text-[12px] font-bold flex items-center gap-1 ${analysis.score > 70 ? 'bg-[#1d1d1f] text-white' : 'bg-[#F5F5F7] text-[#1d1d1f]'}`}>
+                        <Zap size={12} fill={analysis.score > 70 ? "currentColor" : "none"} /> {analysis.score}% Match
+                     </span>
                 )}
-                {analysis && analysis.isHighValue && (
-                     <span className="px-3 py-1 rounded-full text-xs font-bold bg-[#E6F4EA] text-[#137333] border border-[#CEEAD6] flex items-center gap-1"><TrendingUp size={14} aria-hidden="true" /> High Value</span>
+                {analysis?.industry && (
+                     <span className="px-3 py-1 rounded-full text-[12px] font-semibold bg-[#E8F2FF] text-[#0071e3]">{analysis.industry}</span>
                 )}
-                {analysis && analysis.isCommuteRisk && (
-                     <span className="px-3 py-1 rounded-full text-xs font-bold bg-[#FCE8E6] text-[#C5221F] border border-[#FAD2CF] flex items-center gap-1"><AlertTriangle size={14} aria-hidden="true" /> Commute Risk</span>
+                {analysis?.isHighValue && (
+                     <span className="px-3 py-1 rounded-full text-[12px] font-semibold bg-[#E6F4EA] text-[#34C759] flex items-center gap-1"><TrendingUp size={12}/> High Value</span>
                 )}
-                 {analysis?.industry && (
-                     <span className="px-3 py-1 rounded-full text-xs font-bold bg-[#FFF8E1] text-[#B06000] border border-[#FEEFC3]">{analysis.industry}</span>
+                 {job.seniorityScore && (
+                     <span className="px-3 py-1 rounded-full text-[12px] font-semibold bg-[#F5F5F7] text-[#1d1d1f]">{job.seniorityScore}</span>
                 )}
              </div>
 
-             {/* Verdict - Clean text, no box */}
-             {analysis ? (
-                 <div className="mt-2 mb-6">
-                    <p className="text-sm text-[#3C4043] leading-relaxed font-medium">{analysis.verdict}</p>
-                 </div>
-             ) : (
-                 <div className="space-y-2 max-w-md" aria-busy="true" aria-label="Loading analysis">
-                     <div className="h-2 bg-[#F1F3F4] rounded-full w-full animate-pulse"></div>
-                     <div className="h-2 bg-[#F1F3F4] rounded-full w-2/3 animate-pulse"></div>
-                 </div>
+             {/* Verdict - Clean text block */}
+             {analysis && (
+                 <p className="text-[15px] text-[#1d1d1f] leading-relaxed max-w-2xl mb-6 font-normal">
+                    {analysis.verdict}
+                 </p>
              )}
 
-             {/* Actions */}
-             <div className="flex items-center gap-4 mt-6">
+             {/* Call to Actions - Removed View Strategy Button */}
+             <div className="flex items-center gap-4">
                  <a 
                     href={applyUrl} 
                     target="_blank" 
                     rel="noopener noreferrer" 
-                    className="px-6 py-2.5 rounded-full text-sm font-bold bg-[#1a73e8] text-white hover:bg-[#1557B0] hover:shadow-lg transition-all flex items-center gap-2 focus:outline-none focus:ring-2 focus:ring-[#1a73e8] focus:ring-offset-2"
-                    aria-label={`Apply for ${job.title} at ${job.company} on external site`}
+                    onClick={(e) => e.stopPropagation()}
+                    className="apple-button px-6 py-2.5 text-[13px] font-medium flex items-center gap-2 shadow-sm hover:shadow-md"
                  >
-                     {getAbsoluteUrl(job.url) ? 'Apply Now' : 'Search Google'} <ExternalLink size={18} aria-hidden="true" />
+                     {getAbsoluteUrl(job.url) ? 'Apply Now' : 'Google Search'} <ExternalLink size={14} />
                  </a>
              </div>
           </div>

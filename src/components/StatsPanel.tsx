@@ -4,19 +4,19 @@ import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
 import { Job } from '../types';
 
 interface StatsPanelProps {
-  jobs: Job[];
+  jobs: Job[]; 
   selectedIndustry: string | null;
   onSelectIndustry: (industry: string | null) => void;
 }
 
-// Google Brand Colors
+// Apple Data Colors
 const COLORS = [
-  '#4285F4', // Blue
-  '#DB4437', // Red
-  '#F4B400', // Yellow
-  '#0F9D58', // Green
-  '#AB47BC', // Purple
-  '#00ACC1'  // Cyan
+  '#0071e3', // Blue
+  '#ff2d55', // Pink
+  '#ffcc00', // Yellow
+  '#34c759', // Green
+  '#af52de', // Purple
+  '#5856d6'  // Indigo
 ];
 
 const StatsPanel: React.FC<StatsPanelProps> = ({ jobs, selectedIndustry, onSelectIndustry }) => {
@@ -33,7 +33,6 @@ const StatsPanel: React.FC<StatsPanelProps> = ({ jobs, selectedIndustry, onSelec
   };
 
   const industryCounts = jobs.reduce((acc, job) => {
-    if ((job.status || 'new') !== 'new') return acc;
     const industry = getIndustry(job);
     acc[industry] = (acc[industry] || 0) + 1;
     return acc;
@@ -49,29 +48,29 @@ const StatsPanel: React.FC<StatsPanelProps> = ({ jobs, selectedIndustry, onSelec
   if (totalJobs === 0) return null;
 
   return (
-    <div className="bg-[#F1F3F4] rounded-2xl">
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="text-xs font-bold text-[#70757A] uppercase tracking-wide">Market Breakdown</h3>
+    <div>
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="text-[11px] font-bold text-[#86868b] uppercase tracking-wider">Breakdown</h3>
         {selectedIndustry && (
             <button 
                 onClick={() => onSelectIndustry(null)}
-                className="text-[10px] font-bold text-[#1a73e8] hover:bg-white px-2 py-1 rounded-md transition-colors"
-                aria-label="Clear Industry Filter"
+                className="text-[10px] font-bold text-[#0071e3] hover:underline"
             >
-                CLEAR
+                Reset
             </button>
         )}
       </div>
       
-      <div className="h-[180px] relative mb-6 cursor-pointer" aria-hidden="true">
+      {/* Reduced Height for Compact View */}
+      <div className="h-[120px] relative mb-4">
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
             <Pie 
                 data={data} 
                 cx="50%" 
                 cy="50%" 
-                innerRadius={50} 
-                outerRadius={70} 
+                innerRadius={35} 
+                outerRadius={55} 
                 paddingAngle={4} 
                 dataKey="value" 
                 stroke="none" 
@@ -86,41 +85,36 @@ const StatsPanel: React.FC<StatsPanelProps> = ({ jobs, selectedIndustry, onSelec
                     key={`cell-${index}`} 
                     fill={COLORS[index % COLORS.length]} 
                     opacity={selectedIndustry && selectedIndustry !== entry.name ? 0.3 : 1}
-                    className="transition-all duration-300 outline-none"
-                    style={{ outline: 'none' }}
+                    style={{ outline: 'none', transition: 'all 0.3s ease', cursor: 'pointer' }}
                 />
               ))}
             </Pie>
             <Tooltip 
-              contentStyle={{ borderRadius: '12px', border: 'none', padding: '8px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
-              itemStyle={{ fontSize: '12px', fontWeight: '600', color: '#1e293b' }}
+              contentStyle={{ borderRadius: '12px', border: 'none', padding: '8px 12px', fontSize: '11px', boxShadow: '0 4px 20px rgba(0,0,0,0.1)', background: '#fff' }}
+              itemStyle={{ color: '#1d1d1f', fontWeight: 600 }}
             />
           </PieChart>
         </ResponsiveContainer>
         
-        {/* Center Text */}
         <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-             <span className="text-3xl font-bold text-[#202124]">{selectedIndustry ? data.find(d => d.name === selectedIndustry)?.value : totalJobs}</span>
-             <span className="text-[10px] uppercase font-bold text-[#5F6368]">{selectedIndustry ? 'Jobs' : 'Total'}</span>
+             <span className="text-2xl font-bold text-[#1d1d1f] tracking-tight">{selectedIndustry ? data.find(d => d.name === selectedIndustry)?.value : totalJobs}</span>
         </div>
       </div>
       
-      <div className="space-y-2" role="list">
-        {data.map((entry, index) => {
+      <div className="space-y-1">
+        {data.slice(0, 5).map((entry, index) => {
           const isSelected = selectedIndustry === entry.name;
           return (
             <button
                 key={entry.name} 
-                role="listitem"
                 onClick={() => onSelectIndustry(isSelected ? null : entry.name)}
-                className={`w-full flex items-center justify-between text-xs cursor-pointer p-2 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-[#1a73e8] ${isSelected ? 'bg-white shadow-sm' : 'hover:bg-white/50'}`}
-                aria-pressed={isSelected}
+                className={`w-full flex items-center justify-between text-[11px] cursor-pointer px-2.5 py-1.5 rounded-lg transition-colors ${isSelected ? 'bg-[#F5F5F7] font-semibold text-[#0071e3]' : 'text-[#86868b] hover:bg-[#F5F5F7]'}`}
             >
-               <div className="flex items-center gap-3">
-                 <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: COLORS[index % COLORS.length] }} aria-hidden="true"></div>
-                 <span className={`font-semibold ${isSelected ? 'text-[#202124]' : 'text-[#5F6368]'}`}>{entry.name}</span>
+               <div className="flex items-center gap-2">
+                 <div className="w-2 h-2 rounded-full" style={{ backgroundColor: COLORS[index % COLORS.length] }}></div>
+                 <span className="truncate max-w-[140px]">{entry.name}</span>
                </div>
-               <span className="font-bold text-[#202124]">{entry.value}</span>
+               <span>{entry.value}</span>
             </button>
           );
         })}

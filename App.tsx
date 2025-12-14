@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Job, ViewState } from './types';
 import { searchAndParseJobs, analyzeJob, generateApplicationKit, enrichJob } from './services/geminiService';
 import { initFirebase, subscribeToJobs, addOrUpdateJob, updateJobStatus, deleteJob, saveAnalysis, addManualJob } from './services/firebase';
@@ -10,7 +10,7 @@ import KanbanBoard from './components/KanbanBoard';
 import CVEditor from './components/CVEditor';
 import JobDetailModal from './components/JobDetailModal';
 import AddLinkModal from './components/AddLinkModal';
-import { Bot, Layout, Columns, FileText, CheckCircle2, Filter, Sparkles, Plus, Search, ArrowDownUp, Globe, Link } from 'lucide-react';
+import { LayoutGrid, Kanban, FileText, Plus, Search, Command, Sparkles, ArrowDownUp, Layers } from 'lucide-react';
 
 const App: React.FC = () => {
   // Navigation & Data
@@ -19,9 +19,7 @@ const App: React.FC = () => {
   const [allJobs, setAllJobs] = useState<Job[]>([]);
   
   // Auto-Init Firebase
-  const [isDbConnected, setIsDbConnected] = useState(() => {
-    return initFirebase(DEFAULT_FIREBASE_CONFIG);
-  });
+  const [isDbConnected] = useState(() => initFirebase(DEFAULT_FIREBASE_CONFIG));
   
   // Filter & Sort
   const [cityFilter, setCityFilter] = useState<string>('All');
@@ -110,7 +108,6 @@ const App: React.FC = () => {
           await saveAnalysis(job.id, analysis);
           const updatedJob = { ...job, analysis };
           setSelectedJob(updatedJob);
-          // Manually update allJobs to reflect change immediately if needed, though subscription usually handles it
           setAllJobs(prev => prev.map(j => j.id === job.id ? updatedJob : j));
       } catch (e) {
           console.error("Re-analysis failed", e);
@@ -148,37 +145,23 @@ const App: React.FC = () => {
 
   const handleAddManualJob = async (data: { url?: string, text?: string, title?: string, company?: string }) => {
       try {
-          if (currentView === ViewState.DASHBOARD) {
-              setActiveTab('saved');
-          }
           if (currentView !== ViewState.DASHBOARD && currentView !== ViewState.KANBAN) {
               setCurrentView(ViewState.DASHBOARD);
               setActiveTab('saved');
           }
-
-          // 1. Create Placeholder immediately (works for both URL and Text)
           const placeholder = await addManualJob(data);
           if (!placeholder) return;
           
           setAnalyzingCount(prev => prev + 1);
-
-          // 2. Enrich with AI (handles both cases)
           const enrichedDetails = await enrichJob(data);
-          
-          // Merge details. Priority: AI enrichment > Manual Input > Placeholder defaults
           const enrichedJob = { 
               ...placeholder, 
               ...enrichedDetails,
-              // If we have manual text, ensure it isn't overwritten by empty AI result
               summary: enrichedDetails.summary || data.text || placeholder.summary
           };
-          
           await addOrUpdateJob(enrichedJob);
-
-          // 3. Analyze
           const analysis = await analyzeJob(enrichedJob);
           await saveAnalysis(enrichedJob.id, analysis);
-
       } catch (e) {
           console.error("Error adding manual job", e);
       } finally {
@@ -186,269 +169,220 @@ const App: React.FC = () => {
       }
   };
 
-  const locationCounts = allJobs.reduce((acc, job) => {
-    const locRaw = job.location.toLowerCase();
-    let key = 'Other';
-    if (locRaw.includes('edinburgh')) key = 'Edinburgh';
-    else if (locRaw.includes('glasgow')) key = 'Glasgow';
-    else if (locRaw.includes('remote')) key = 'Remote';
-    else if (locRaw.includes('london')) key = 'London';
-    else if (locRaw.includes('manchester')) key = 'Manchester';
-    if ((job.status || 'new') === 'new') {
-        acc[key] = (acc[key] || 0) + 1;
-        acc['All'] = (acc['All'] || 0) + 1;
-    }
-    return acc;
-  }, { 'All': 0 } as Record<string, number>);
+  // --- FILTER LOGIC ---
+  const jobsInCurrentTab = useMemo(() => {
+    return allJobs.filter(j => {
+        const status = j.status || 'new';
+        if (activeTab === 'new') return status === 'new';
+        if (activeTab === 'saved') return ['saved', 'applied', 'interview', 'offer'].includes(status);
+        if (activeTab === 'archived') return status === 'archived';
+        return false;
+    });
+  }, [allJobs, activeTab]);
+
+  const filteredJobs = useMemo(() => {
+      return jobsInCurrentTab.filter(j => {
+        const locMatch = cityFilter === 'All' ? true : (cityFilter === 'Other' ? !['edinburgh', 'glasgow', 'remote', 'london', 'manchester'].some(s => j.location.toLowerCase().includes(s)) : j.location.toLowerCase().includes(cityFilter.toLowerCase()));
+        if (!locMatch) return false;
+        
+        if (industryFilter) {
+            const ind = j.analysis?.industry || 'Tech';
+            if (ind !== industryFilter) {
+                 const text = (j.company + " " + j.title + " " + (j.summary || "")).toLowerCase();
+                 let calculatedIndustry = 'Tech';
+                 if (text.match(/bank|finance|wealth|fintech/)) calculatedIndustry = 'Fintech';
+                 else if (text.match(/insurance|underwrit/)) calculatedIndustry = 'Insurance';
+                 else if (text.match(/gov|public|council|nhs/)) calculatedIndustry = 'Public Sector';
+                 else if (text.match(/agency|studio/)) calculatedIndustry = 'Agency';
+                 
+                 if (calculatedIndustry !== industryFilter) return false;
+            }
+        }
+        return true;
+      }).sort((a, b) => {
+          if (sortBy === 'score') {
+              return (b.analysis?.score || 0) - (a.analysis?.score || 0);
+          }
+          return (b.scoutedAt || 0) - (a.scoutedAt || 0);
+      });
+  }, [jobsInCurrentTab, cityFilter, industryFilter, sortBy]);
 
   const filterOptions = ['All', 'Edinburgh', 'Glasgow', 'Remote', 'London', 'Manchester', 'Other'];
 
-  const filteredJobs = allJobs.filter(j => {
-    const status = j.status || 'new';
-    if (activeTab === 'new') return status === 'new';
-    if (activeTab === 'saved') return ['saved', 'applied', 'interview', 'offer'].includes(status);
-    if (activeTab === 'archived') return status === 'archived';
-    return true;
-  }).filter(j => {
-    const locMatch = cityFilter === 'All' ? true : (cityFilter === 'Other' ? !['edinburgh', 'glasgow', 'remote', 'london', 'manchester'].some(s => j.location.toLowerCase().includes(s)) : j.location.toLowerCase().includes(cityFilter.toLowerCase()));
-    if (!locMatch) return false;
-    
-    // Industry Filter
-    if (industryFilter) {
-        const ind = j.analysis?.industry || 'Tech';
-        if (ind !== industryFilter) {
-             const text = (j.company + " " + j.title + " " + (j.summary || "")).toLowerCase();
-             let calculatedIndustry = 'Tech';
-             if (text.match(/bank|finance|wealth|fintech/)) calculatedIndustry = 'Fintech';
-             else if (text.match(/insurance|underwrit/)) calculatedIndustry = 'Insurance';
-             else if (text.match(/gov|public|council|nhs/)) calculatedIndustry = 'Public Sector';
-             else if (text.match(/agency|studio/)) calculatedIndustry = 'Agency';
-             
-             if (calculatedIndustry !== industryFilter) return false;
-        }
-    }
-    return true;
-  }).sort((a, b) => {
-      if (sortBy === 'score') {
-          return (b.analysis?.score || 0) - (a.analysis?.score || 0);
-      }
-      return (b.scoutedAt || 0) - (a.scoutedAt || 0);
-  });
-
   return (
-    <div className="min-h-screen bg-[#F0F2F5] text-[#202124] font-sans pb-20 selection:bg-[#E8F0FE] selection:text-[#1a73e8]">
-      
-      {/* FLOATING HEADER */}
-      <div className="sticky top-4 z-40 px-4 mb-4 flex justify-center">
-          <header className="bg-white/90 backdrop-blur-xl border border-white/40 rounded-full shadow-lg elevation-1 p-2 w-full max-w-2xl flex items-center justify-between transition-all">
-             <div className="flex items-center gap-3">
-                 <div className="bg-[#1a73e8] p-2 rounded-full text-white shadow-sm">
-                     <Bot size={20} fill="none" />
-                 </div>
-                 <span className="font-bold text-lg text-[#202124]">Vyom's Job Agent</span>
-             </div>
-
-             <nav className="flex items-center gap-1 bg-[#F1F3F4] p-1 rounded-full">
-                 {[
-                   { id: ViewState.DASHBOARD, label: 'Dashboard', icon: Layout },
-                   { id: ViewState.KANBAN, label: 'Jobs Applied', icon: Columns },
-                   { id: ViewState.CV_EDITOR, label: 'CV', icon: FileText }
-                 ].map(item => (
-                   <button 
-                     key={item.id}
-                     onClick={() => setCurrentView(item.id)} 
-                     className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-bold transition-all duration-300 ${currentView === item.id ? 'bg-[#202124] text-white shadow-md' : 'text-[#5F6368] hover:text-[#202124] hover:bg-white/50'}`}
-                   >
-                      <item.icon size={16} />
-                      <span className="hidden sm:inline">{item.label}</span>
-                   </button>
-                 ))}
-             </nav>
-          </header>
-      </div>
-
-      <main className="max-w-[1600px] mx-auto px-6 mt-8">
+    <div className="min-h-screen bg-[#F5F5F7] pb-20 font-sans overflow-x-hidden">
         
-        {/* WELCOME HEADER - CENTERED WITH SCOUT BUTTON */}
-        {currentView === ViewState.DASHBOARD && (
-            <div className="mb-20 pt-10 animate-in fade-in slide-in-from-bottom-4 duration-500 text-center max-w-2xl mx-auto flex flex-col items-center">
-                <h1 className="text-4xl font-normal text-[#202124] tracking-tight">
-                    Welcome back, <span className="font-bold">Vyom.</span>
-                </h1>
-                <p className="text-[#5F6368] mt-2 text-lg mb-4">
-                    You have <span className="font-bold text-[#1a73e8]">{allJobs.filter(j => j.status === 'saved').length} saved jobs</span> and <span className="font-bold text-[#137333]">{allJobs.filter(j => j.status === 'interview').length} active interviews</span>.
-                </p>
-
-                <div className="flex items-center gap-4 mb-20">
-                    <button
-                        onClick={fetchJobs}
-                        disabled={isFetching}
-                        className="px-6 py-2.5 rounded-full text-sm font-bold bg-white border border-[#DADCE0] text-[#5F6368] hover:border-[#1a73e8] hover:text-[#1a73e8] transition-all flex items-center gap-2 shadow-sm"
-                    >
-                        {isFetching ? (
-                            <span className="flex items-center gap-2">
-                                <span className="w-4 h-4 border-2 border-[#5F6368] border-t-transparent rounded-full animate-spin"></span>
-                                Scouting Market...
-                            </span>
-                        ) : (
-                            <>
-                                <Search size={18} />
-                                <span>Scout New Jobs</span>
-                            </>
-                        )}
-                        
-                        {analyzingCount > 0 && (
-                            <span className="absolute -top-2 -right-2 bg-[#DB4437] text-white text-xs font-bold px-2 py-1 rounded-full shadow-md animate-bounce border border-white">
-                                {analyzingCount} analyzing
-                            </span>
-                        )}
-                    </button>
-
-                    <button
-                        onClick={() => setIsAddLinkOpen(true)}
-                        className="px-6 py-2.5 rounded-full text-sm font-bold bg-white border border-[#DADCE0] text-[#5F6368] hover:border-[#1a73e8] hover:text-[#1a73e8] transition-all flex items-center gap-2 shadow-sm"
-                        title="Add Job Link"
-                    >
-                        <Link size={18} />
-                        <span>Add Job</span>
-                    </button>
-                </div>
+        {/* GLOBAL NAVIGATION BAR */}
+        <nav className="fixed top-0 left-0 right-0 h-12 bg-[#1d1d1f]/80 backdrop-blur-xl z-[40] text-[#f5f5f7] text-[12px] border-b border-white/5">
+            <div className="max-w-[1024px] mx-auto h-full flex items-center justify-between px-6">
+                 <div className="flex items-center gap-6">
+                     <span className="font-semibold text-base tracking-tight text-white flex items-center gap-2"><Layers size={18} /> Career Studio</span>
+                     <div className="hidden sm:flex items-center gap-6 text-[#d2d2d7]">
+                         <button onClick={() => setCurrentView(ViewState.DASHBOARD)} className={`transition-colors hover:text-white ${currentView === ViewState.DASHBOARD ? 'text-white' : ''}`}>Discover</button>
+                         <button onClick={() => setCurrentView(ViewState.KANBAN)} className={`transition-colors hover:text-white ${currentView === ViewState.KANBAN ? 'text-white' : ''}`}>Pipeline</button>
+                         <button onClick={() => setCurrentView(ViewState.CV_EDITOR)} className={`transition-colors hover:text-white ${currentView === ViewState.CV_EDITOR ? 'text-white' : ''}`}>Resume</button>
+                     </div>
+                 </div>
+                 
+                 <div className="flex items-center gap-4">
+                     {analyzingCount > 0 && (
+                        <span className="flex items-center gap-1.5 text-[#0071e3] font-medium">
+                            <Sparkles size={12} className="animate-spin" /> Analyzing...
+                        </span>
+                     )}
+                     <div className="w-6 h-6 rounded-full bg-gray-600 flex items-center justify-center text-[10px] font-bold ring-2 ring-white/10">VP</div>
+                 </div>
             </div>
-        )}
+        </nav>
 
-        {currentView === ViewState.DASHBOARD && (
-        <div className="grid grid-cols-12 gap-8 items-start relative">
-            {/* SIDEBAR FILTER PANEL */}
-            <div className="col-span-12 lg:col-span-3">
-               <div className="sticky top-28 space-y-6">
-                    <div className="bg-[#F1F3F4] p-6 rounded-[28px] border border-white shadow-sm ring-1 ring-[#DADCE0]/50">
-                        <div className="flex items-center gap-2 mb-6 text-[#5F6368]">
-                            <Filter size={20} />
-                            <span className="text-sm font-bold uppercase tracking-wider">Smart Filters</span>
+        {/* HERO SECTION */}
+        <div className={`pt-24 pb-10 ${currentView === ViewState.KANBAN ? 'w-full' : 'max-w-[1024px] mx-auto px-6'}`}>
+            {currentView === ViewState.DASHBOARD && (
+                <>
+                    <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12 animate-fade-in-up">
+                        <div>
+                            <h1 className="text-[48px] md:text-[64px] leading-[1.05] font-semibold text-[#1d1d1f] tracking-tight mb-4">
+                                Masterplan your <br/>
+                                <span className="text-[#86868b]">next move.</span>
+                            </h1>
+                            <p className="text-[#1d1d1f] text-lg font-medium max-w-lg leading-relaxed">
+                                <span className="text-[#0071e3] font-semibold">{allJobs.filter(j => j.status === 'saved').length} opportunities</span> tailored to your experience.
+                            </p>
                         </div>
                         
-                        <div className="space-y-4">
-                            <p className="text-xs font-bold text-[#70757A] ml-1 uppercase">Location</p>
-                            <div className="flex flex-wrap gap-2">
-                                {filterOptions.map(city => {
-                                    const count = locationCounts[city] || 0;
-                                    if (count === 0 && city !== 'All') return null;
-                                    const isActive = cityFilter === city;
+                        <div className="flex gap-3 pb-2">
+                             <button 
+                                onClick={fetchJobs} 
+                                disabled={isFetching}
+                                className={`h-10 px-6 rounded-full bg-[#0071e3] hover:bg-[#0077ED] text-white text-sm font-medium transition-all flex items-center gap-2 ${isFetching ? 'opacity-70 cursor-not-allowed' : 'hover:scale-105 active:scale-95 shadow-lg shadow-blue-500/20'}`}
+                             >
+                                <Search size={16} /> {isFetching ? 'Scouting...' : 'Scout Jobs'}
+                             </button>
+                             <button 
+                                onClick={() => setIsAddLinkOpen(true)}
+                                className="h-10 w-10 flex items-center justify-center rounded-full bg-[#E8E8ED] hover:bg-[#d2d2d7] text-[#1d1d1f] transition-all hover:scale-105 active:scale-95"
+                             >
+                                <Plus size={18} />
+                             </button>
+                        </div>
+                    </div>
+
+                    {/* DASHBOARD GRID LAYOUT */}
+                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                        
+                        {/* LEFT COLUMN: FILTERS & WIDGETS - Sticky behavior restored */}
+                        <div className="lg:col-span-3 space-y-6 sticky top-24">
+                            {/* Filter Widget */}
+                            <div className="bg-white rounded-[24px] p-5 shadow-sm border border-black/5">
+                                <h3 className="text-[11px] font-bold text-[#86868b] uppercase tracking-wider mb-3">Locations</h3>
+                                <div className="space-y-1">
+                                    {filterOptions.map(city => {
+                                        const count = city === 'All' ? jobsInCurrentTab.length : jobsInCurrentTab.filter(j => city === 'Other' ? !['edinburgh', 'glasgow', 'remote', 'london', 'manchester'].some(s => j.location.toLowerCase().includes(s)) : j.location.toLowerCase().includes(city.toLowerCase())).length;
+                                        if (count === 0 && city !== 'All') return null;
+                                        const isSelected = cityFilter === city;
+                                        return (
+                                            <button 
+                                                key={city} 
+                                                onClick={() => setCityFilter(city)} 
+                                                className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-[13px] transition-all ${isSelected ? 'bg-[#F5F5F7] font-semibold text-[#0071e3]' : 'text-[#1d1d1f] hover:bg-[#F5F5F7]'}`}
+                                            >
+                                                <span>{city}</span>
+                                                <span className="text-[#86868b] text-[11px]">{count}</span>
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                                
+                                <div className="w-full h-px bg-[#F5F5F7] my-5"></div>
+                                
+                                <StatsPanel 
+                                    jobs={jobsInCurrentTab} 
+                                    selectedIndustry={industryFilter}
+                                    onSelectIndustry={setIndustryFilter}
+                                />
+                            </div>
+                        </div>
+
+                        {/* RIGHT COLUMN: CONTENT */}
+                        <div className="lg:col-span-9">
+                            {/* Tabs Pill */}
+                            <div className="flex items-center gap-2 mb-6 overflow-x-auto pb-2 scrollbar-hide">
+                                {['new', 'saved', 'archived'].map((tab) => {
+                                    const isActive = activeTab === tab;
                                     return (
                                         <button 
-                                            key={city} 
-                                            onClick={() => setCityFilter(city)} 
-                                            className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all flex items-center gap-2 border ${isActive ? 'bg-[#202124] text-white border-transparent shadow-sm' : 'bg-white text-[#5F6368] border-[#DADCE0] hover:border-[#202124]'}`}
+                                            key={tab}
+                                            onClick={() => setActiveTab(tab as any)} 
+                                            className={`px-5 py-2 rounded-full text-[13px] font-medium capitalize whitespace-nowrap transition-all ${isActive ? 'bg-[#1d1d1f] text-white' : 'bg-white text-[#1d1d1f] border border-[#d2d2d7] hover:border-[#86868b]'}`}
                                         >
-                                            {city} <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${isActive ? 'bg-white/20' : 'bg-[#F1F3F4]'}`}>{count}</span>
+                                            {tab}
                                         </button>
                                     );
                                 })}
+                                <div className="ml-auto flex items-center gap-2">
+                                    <span className="text-[11px] text-[#86868b] font-medium mr-1">Sort by:</span>
+                                    <button 
+                                        onClick={() => setSortBy(sortBy === 'date' ? 'score' : 'date')}
+                                        className="text-[11px] font-bold text-[#0071e3] hover:underline flex items-center gap-1"
+                                    >
+                                        {sortBy === 'date' ? 'Date' : 'Match Score'} <ArrowDownUp size={12}/>
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* Job List */}
+                            <div className="space-y-6">
+                                {filteredJobs.length === 0 ? (
+                                    <div className="py-20 text-center text-[#86868b]">
+                                        <p className="text-lg font-medium">No opportunities found.</p>
+                                        <button onClick={() => { setCityFilter('All'); setIndustryFilter(null); }} className="text-[#0071e3] font-medium mt-2 hover:underline">Clear Filters</button>
+                                    </div>
+                                ) : (
+                                    filteredJobs.map(job => (
+                                        <JobCard key={job.id} job={job} onOpenDetail={handleOpenDetail} onToggleStatus={toggleJobStatus} onDelete={handleDelete} />
+                                    ))
+                                )}
                             </div>
                         </div>
-                        
-                        <div className="h-px bg-[#DADCE0] my-6"></div>
-                        <StatsPanel 
+                    </div>
+                </>
+            )}
+
+            {currentView === ViewState.KANBAN && (
+                <div className="h-[calc(100vh-100px)] animate-fade-in-up flex flex-col w-full">
+                    <div className="flex items-center justify-between mb-8 w-full max-w-[1024px] mx-auto px-6">
+                        <h1 className="text-[40px] font-semibold text-[#1d1d1f] tracking-tight">Pipeline</h1>
+                        <button 
+                            onClick={() => setIsAddLinkOpen(true)}
+                            className="h-10 px-5 rounded-full bg-[#1d1d1f] hover:bg-black text-white text-sm font-medium transition-all flex items-center gap-2 shadow-lg"
+                        >
+                            <Plus size={16} /> Add Job
+                        </button>
+                    </div>
+                    <div className="flex-1 min-h-0 w-full">
+                        <KanbanBoard 
                             jobs={allJobs} 
-                            selectedIndustry={industryFilter}
-                            onSelectIndustry={setIndustryFilter}
+                            onGenerateKit={(job) => handleOpenDetail(job, 'strategy')}
+                            onToggleStatus={handleKanbanMove}
+                            onDelete={handleDelete}
+                            onOpenDetail={handleOpenDetail}
+                            onOpenAddModal={() => setIsAddLinkOpen(true)}
                         />
-
-                        <div className="h-px bg-[#DADCE0] my-6"></div>
-                        
-                        <div>
-                            <h3 className="text-xs font-bold text-[#70757A] uppercase tracking-wide mb-3 flex items-center gap-2">
-                                <span className="w-1.5 h-1.5 rounded-full bg-[#34A853]"></span> Active Sources
-                            </h3>
-                            <div className="flex flex-wrap gap-2">
-                                {['LinkedIn', 'Glassdoor', 'Indeed', 'Otta', 'Reed', 'TotalJobs', 'Behance'].map(p => (
-                                    <span key={p} className="px-2.5 py-1.5 bg-white border border-[#DADCE0] rounded-lg text-[11px] font-bold text-[#5F6368] shadow-sm cursor-default hover:border-[#202124] transition-colors">
-                                        {p}
-                                    </span>
-                                ))}
-                            </div>
-                        </div>
-                    </div>
-               </div>
-            </div>
-
-            {/* MAIN CONTENT LIST */}
-            <div className="col-span-12 lg:col-span-9 min-h-screen">
-                
-                {/* Tabs & Sort */}
-                <div className="flex flex-wrap items-center justify-between mb-6 gap-4">
-                    <div className="flex items-center gap-3 overflow-x-auto pb-2 scrollbar-hide">
-                        {['new', 'saved', 'archived'].map((tab) => {
-                            const count = allJobs.filter(j => {
-                                    if (tab === 'new') return (j.status || 'new') === 'new';
-                                    if (tab === 'saved') return ['saved', 'applied', 'interview', 'offer'].includes(j.status || '');
-                                    return j.status === 'archived';
-                                }).length;
-                            const isActive = activeTab === tab;
-                            return (
-                                <button 
-                                    key={tab}
-                                    onClick={() => setActiveTab(tab as any)} 
-                                    className={`px-5 py-2 rounded-full text-sm font-bold capitalize transition-all whitespace-nowrap border ${isActive ? 'bg-[#E8F0FE] text-[#1967D2] border-transparent shadow-sm' : 'bg-white text-[#5F6368] border-[#DADCE0] hover:bg-[#F1F3F4]'}`}
-                                >
-                                    {tab} <span className="opacity-60 text-xs ml-1">({count})</span>
-                                </button>
-                            );
-                        })}
-                    </div>
-
-                    <div className="flex items-center gap-2 bg-white p-1 rounded-full border border-[#DADCE0]">
-                         <button 
-                            onClick={() => setSortBy('date')}
-                            className={`px-4 py-1.5 rounded-full text-xs font-bold flex items-center gap-1 transition-all ${sortBy === 'date' ? 'bg-[#202124] text-white' : 'text-[#5F6368] hover:bg-[#F1F3F4]'}`}
-                         >
-                            Date
-                         </button>
-                         <button 
-                            onClick={() => setSortBy('score')}
-                            className={`px-4 py-1.5 rounded-full text-xs font-bold flex items-center gap-1 transition-all ${sortBy === 'score' ? 'bg-[#202124] text-white' : 'text-[#5F6368] hover:bg-[#F1F3F4]'}`}
-                         >
-                            Score <ArrowDownUp size={12} />
-                         </button>
                     </div>
                 </div>
+            )}
 
-                <div className="space-y-4 pb-24">
-                    {filteredJobs.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center py-32 bg-white rounded-[32px] border border-dashed border-[#DADCE0] text-[#70757A]">
-                            <CheckCircle2 size={64} className="mb-4 text-[#DADCE0]" />
-                            <h3 className="text-xl font-bold text-[#5F6368]">All caught up</h3>
-                            <p className="text-sm font-medium">No jobs match your current filters.</p>
-                            {(cityFilter !== 'All' || industryFilter) && (
-                                <button onClick={() => { setCityFilter('All'); setIndustryFilter(null); }} className="mt-4 text-[#1a73e8] font-bold text-sm">Clear Filters</button>
-                            )}
-                        </div>
-                    ) : (
-                        filteredJobs.map(job => (
-                            <JobCard key={job.id} job={job} onOpenDetail={handleOpenDetail} onToggleStatus={toggleJobStatus} onDelete={handleDelete} />
-                        ))
-                    )}
+            {currentView === ViewState.CV_EDITOR && (
+                <div className="h-[calc(100vh-60px)] animate-fade-in-up flex flex-col items-center">
+                    <div className="w-full max-w-[1024px] mb-6 px-6">
+                        <h1 className="text-[40px] font-semibold text-[#1d1d1f] tracking-tight">Resume</h1>
+                    </div>
+                    <div className="flex-1 w-full relative">
+                        <CVEditor />
+                    </div>
                 </div>
-            </div>
+            )}
         </div>
-        )}
-
-        {currentView === ViewState.KANBAN && (
-            <KanbanBoard 
-                jobs={allJobs} 
-                onGenerateKit={(job) => handleOpenDetail(job, 'strategy')}
-                onToggleStatus={handleKanbanMove}
-                onDelete={handleDelete}
-                onOpenDetail={handleOpenDetail}
-                onOpenAddModal={() => setIsAddLinkOpen(true)}
-            />
-        )}
-
-        {currentView === ViewState.CV_EDITOR && (
-            <CVEditor />
-        )}
-
-      </main>
 
       <JobDetailModal 
         isOpen={modalOpen} 
