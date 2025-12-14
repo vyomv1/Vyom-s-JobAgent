@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { Job } from '../types';
 import JobCard from './JobCard';
-import { Bookmark, Send, Users, Trophy, Link, Plus } from 'lucide-react';
+import { Bookmark, Send, Users, Trophy, Plus } from 'lucide-react';
 
 interface KanbanBoardProps {
   jobs: Job[];
@@ -10,13 +10,11 @@ interface KanbanBoardProps {
   onToggleStatus: (id: string, status: Job['status']) => void;
   onDelete: (id: string) => void;
   onOpenDetail: (job: Job) => void;
-  onAddJob: (url: string) => Promise<void>;
+  onOpenAddModal: () => void;
 }
 
-const KanbanBoard: React.FC<KanbanBoardProps> = ({ jobs, onGenerateKit, onToggleStatus, onDelete, onOpenDetail, onAddJob }) => {
+const KanbanBoard: React.FC<KanbanBoardProps> = ({ jobs, onGenerateKit, onToggleStatus, onDelete, onOpenDetail, onOpenAddModal }) => {
   const [draggedJobId, setDraggedJobId] = useState<string | null>(null);
-  const [newJobUrl, setNewJobUrl] = useState('');
-  const [isAdding, setIsAdding] = useState(false);
 
   // Filter jobs by status - Using uniform neutral background
   const columns: { id: Job['status'], title: string, icon: React.ReactNode, bgClass: string, accentColor: string }[] = [
@@ -44,62 +42,30 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ jobs, onGenerateKit, onToggle
       }
   };
 
-  const handleAddSubmit = async (e: React.FormEvent) => {
-      e.preventDefault();
-      if (!newJobUrl.trim()) return;
-      setIsAdding(true);
-      await onAddJob(newJobUrl);
-      setNewJobUrl('');
-      setIsAdding(false);
-  };
-
   return (
     <div className="flex flex-col h-full min-h-[750px]">
       
-      {/* ADD JOB INPUT FIELD */}
-      <div className="mb-8 mx-2 shrink-0">
-          <form onSubmit={handleAddSubmit} className="relative max-w-2xl">
-                <div className="relative group">
-                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                        <Link className="text-gray-400 group-focus-within:text-[#1a73e8] transition-colors" size={20} />
-                    </div>
-                    <input 
-                        type="url" 
-                        value={newJobUrl}
-                        onChange={(e) => setNewJobUrl(e.target.value)}
-                        placeholder="Paste a job link to add to board..."
-                        className="w-full pl-12 pr-36 py-4 bg-white border border-[#DADCE0] rounded-full shadow-sm focus:border-[#1a73e8] focus:ring-4 focus:ring-[#1a73e8]/10 outline-none text-[#202124] transition-all font-medium placeholder:text-gray-400"
-                        disabled={isAdding}
-                    />
-                    <button 
-                        type="submit"
-                        disabled={isAdding || !newJobUrl.trim()}
-                        className="absolute right-2 top-2 bottom-2 px-6 bg-[#1a73e8] text-white rounded-full font-bold text-sm hover:bg-[#1557B0] transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-sm flex items-center gap-2"
-                    >
-                        {isAdding ? (
-                            <>
-                            <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"/>
-                            Adding
-                            </>
-                        ) : (
-                            <>
-                            <Plus size={16} />
-                            Add Job
-                            </>
-                        )}
-                    </button>
-                </div>
-          </form>
+      {/* HEADER WITH ADD ACTION */}
+      <div className="mb-8 mx-2 shrink-0 flex justify-between items-center">
+          <h2 className="text-2xl font-bold text-[#202124]">Application Pipeline</h2>
+          <button 
+              onClick={onOpenAddModal}
+              className="flex items-center gap-2 px-6 py-2.5 bg-[#1a73e8] text-white rounded-full font-bold text-sm hover:bg-[#1557B0] transition-all shadow-sm active:scale-95 focus:outline-none focus:ring-4 focus:ring-[#D2E3FC]"
+          >
+              <Plus size={18} />
+              <span className="hidden sm:inline">Add Job</span>
+              <span className="sm:hidden">Add</span>
+          </button>
       </div>
 
       {/* BOARD COLUMNS */}
-      <div className="flex-1 flex gap-6 overflow-x-auto pb-6 items-stretch px-2 custom-scrollbar">
+      <div className="flex-1 flex gap-6 overflow-x-auto pb-6 items-stretch px-2 custom-scrollbar snap-x snap-mandatory">
         {columns.map(col => {
             const colJobs = jobs.filter(j => j.status === col.id);
             return (
                 <div 
                     key={col.id}
-                    className={`flex flex-col h-full min-w-[340px] rounded-[32px] p-4 transition-colors ${col.bgClass} border border-[#DADCE0]`}
+                    className={`flex flex-col h-full min-w-[340px] rounded-[32px] p-4 transition-colors ${col.bgClass} border border-[#DADCE0] snap-center`}
                     onDragOver={handleDragOver}
                     onDrop={(e) => handleDrop(e, col.id)}
                 >

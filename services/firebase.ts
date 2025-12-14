@@ -67,47 +67,56 @@ export const addOrUpdateJob = async (job: Job) => {
   }
 };
 
-export const addManualJob = async (url: string) => {
+export const addManualJob = async (input: { url?: string; text?: string; title?: string; company?: string }) => {
     if (!db) return;
     try {
+        const { url = 'Manual Entry', text, title, company } = input;
+
         let source = "Web";
         let domain = "";
-        let placeholderTitle = "Job Posting";
-        let placeholderCompany = "Detecting...";
+        let placeholderTitle = title || "Job Posting";
+        let placeholderCompany = company || "Detecting...";
         let idFound = "";
 
-        try {
-            const urlObj = new URL(url);
-            domain = urlObj.hostname.replace('www.', '');
-            const hostParts = domain.split('.');
-            if (hostParts.length > 1) {
-                source = hostParts[0].charAt(0).toUpperCase() + hostParts[0].slice(1);
-            }
-            if (domain.includes('oraclecloud') || domain.includes('jpmc')) {
-                placeholderCompany = "JPMorgan Chase";
-            } else if (domain.includes('linkedin')) {
-                placeholderCompany = "LinkedIn Job";
-            } else {
-                placeholderCompany = source;
-            }
+        // If URL provided, try to parse details
+        if (url && url !== 'Manual Entry') {
+            try {
+                const urlObj = new URL(url);
+                domain = urlObj.hostname.replace('www.', '');
+                const hostParts = domain.split('.');
+                if (hostParts.length > 1) {
+                    source = hostParts[0].charAt(0).toUpperCase() + hostParts[0].slice(1);
+                }
+                if (!company) {
+                     if (domain.includes('oraclecloud') || domain.includes('jpmc')) {
+                        placeholderCompany = "JPMorgan Chase";
+                    } else if (domain.includes('linkedin')) {
+                        placeholderCompany = "LinkedIn Job";
+                    } else {
+                        placeholderCompany = source;
+                    }
+                }
 
-            // Extract Job ID for title if possible
-            const idMatch = url.match(/\/job\/(\d+)/) || url.match(/jobId=(\d+)/) || url.match(/currentJobId=(\d+)/) || url.match(/\/(\d{6,})/);
-            if (idMatch) {
-                idFound = idMatch[1];
-                placeholderTitle = `Job ${idFound}`;
-            } else {
-                // Try slug
-                 const pathParts = urlObj.pathname.split(/[-/_]/).filter(p => p.length > 2);
-                 if (pathParts.length > 0) {
-                     const meaningful = pathParts.filter(p => !['job', 'view', 'linkedin', 'careers', 'detail', 'uk', 'en', 'sites'].includes(p.toLowerCase()));
-                     if (meaningful.length > 0) {
-                         placeholderTitle = meaningful.slice(0, 3).map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
-                     }
-                 }
-            }
+                if (!title) {
+                    const idMatch = url.match(/\/job\/(\d+)/) || url.match(/jobId=(\d+)/) || url.match(/currentJobId=(\d+)/) || url.match(/\/(\d{6,})/);
+                    if (idMatch) {
+                        idFound = idMatch[1];
+                        placeholderTitle = `Job ${idFound}`;
+                    } else {
+                        const pathParts = urlObj.pathname.split(/[-/_]/).filter(p => p.length > 2);
+                        if (pathParts.length > 0) {
+                            const meaningful = pathParts.filter(p => !['job', 'view', 'linkedin', 'careers', 'detail', 'uk', 'en', 'sites'].includes(p.toLowerCase()));
+                            if (meaningful.length > 0) {
+                                placeholderTitle = meaningful.slice(0, 3).map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+                            }
+                        }
+                    }
+                }
 
-        } catch (e) {}
+            } catch (e) {}
+        } else {
+            source = "Manual";
+        }
 
         const job: Job = {
             id: `manual-${Date.now()}`,
@@ -115,7 +124,7 @@ export const addManualJob = async (url: string) => {
             company: placeholderCompany,
             location: "Unknown",
             url: url,
-            summary: "", // Clean summary
+            summary: text || "", 
             source: source,
             status: "saved",
             postedDate: new Date().toLocaleDateString(),

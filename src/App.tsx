@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Job, ViewState } from './types';
-import { searchAndParseJobs, analyzeJob, generateApplicationKit, enrichJobFromUrl } from './services/geminiService';
+import { searchAndParseJobs, analyzeJob, generateApplicationKit, enrichJob } from './services/geminiService';
 import { initFirebase, subscribeToJobs, addOrUpdateJob, updateJobStatus, deleteJob, saveAnalysis, addManualJob } from './services/firebase';
 import { DEFAULT_FIREBASE_CONFIG } from './constants';
 import JobCard from './components/JobCard';
@@ -133,32 +133,36 @@ const App: React.FC = () => {
     }
   };
 
-  const handleAddManualJob = async (url: string) => {
+  const handleAddManualJob = async (data: { url?: string, text?: string, title?: string, company?: string }) => {
       try {
-          // 1. View Navigation Logic
-          // If we are on dashboard, ensure 'saved' tab is active to see new job.
           if (currentView === ViewState.DASHBOARD) {
               setActiveTab('saved');
           }
-          // If we are elsewhere (e.g. CV Editor), switch to Dashboard.
-          // Exception: If on Kanban, stay on Kanban (job will appear in Saved column).
           if (currentView !== ViewState.DASHBOARD && currentView !== ViewState.KANBAN) {
               setCurrentView(ViewState.DASHBOARD);
               setActiveTab('saved');
           }
 
-          // 2. Create Placeholder immediately
-          const placeholder = await addManualJob(url);
+          // 1. Create Placeholder immediately (works for both URL and Text)
+          const placeholder = await addManualJob(data);
           if (!placeholder) return;
           
           setAnalyzingCount(prev => prev + 1);
 
-          // 3. Enrich with AI
-          const enrichedDetails = await enrichJobFromUrl(url);
-          const enrichedJob = { ...placeholder, ...enrichedDetails };
+          // 2. Enrich with AI (handles both cases)
+          const enrichedDetails = await enrichJob(data);
+          
+          // Merge details. Priority: AI enrichment > Manual Input > Placeholder defaults
+          const enrichedJob = { 
+              ...placeholder, 
+              ...enrichedDetails,
+              // If we have manual text, ensure it isn't overwritten by empty AI result
+              summary: enrichedDetails.summary || data.text || placeholder.summary
+          };
+          
           await addOrUpdateJob(enrichedJob);
 
-          // 4. Analyze
+          // 3. Analyze
           const analysis = await analyzeJob(enrichedJob);
           await saveAnalysis(enrichedJob.id, analysis);
 
@@ -293,7 +297,7 @@ const App: React.FC = () => {
                         title="Add Job Link"
                     >
                         <Link size={18} />
-                        <span>Add Link</span>
+                        <span>Add Job</span>
                     </button>
                 </div>
             </div>
@@ -423,7 +427,7 @@ const App: React.FC = () => {
                 onToggleStatus={handleKanbanMove}
                 onDelete={handleDelete}
                 onOpenDetail={handleOpenDetail}
-                onAddJob={handleAddManualJob}
+                onOpenAddModal={() => setIsAddLinkOpen(true)}
             />
         )}
 

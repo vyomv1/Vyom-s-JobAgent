@@ -73,10 +73,39 @@ export const searchAndParseJobs = async (query: string): Promise<Job[]> => {
   }));
 };
 
-export const enrichJobFromUrl = async (url: string): Promise<Partial<Job>> => {
+export const enrichJob = async (input: { url?: string; text?: string; title?: string; company?: string }): Promise<Partial<Job>> => {
   const ai = getClient();
+  const { url = '', text = '', title = '', company = '' } = input;
   
-  // 1. Attempt local regex parsing first as a fallback/baseline
+  // 1. If we have raw text, we skip the search and just parse the text.
+  if (text.length > 50) {
+      const prompt = `
+        I have a raw job description text.
+        Title Hint: ${title}
+        Company Hint: ${company}
+
+        Job Description:
+        """${text}"""
+
+        You are an expert Talent Scout Agent. 
+        Extract the structured details from this text.
+        
+        ### OUTPUT FORMAT (JSON)
+        { "title": "string", "company": "string", "location": "string", "summary": "string (cleaned)", "postedDate": "string" }
+      `;
+      try {
+        const response = await retryWithBackoff<GenerateContentResponse>(() => 
+            ai.models.generateContent({ 
+                model: "gemini-2.5-flash", 
+                contents: prompt
+            })
+        );
+        return JSON.parse(cleanJsonOutput(response.text || "{}"));
+      } catch (e) { console.error("Text parsing failed", e); return { summary: text }; }
+  }
+
+  // 2. Fallback to URL Search (Existing Logic)
+  // Attempt local regex parsing first as a fallback/baseline
   let fallbackTitle = "Unknown Role";
   let fallbackCompany = "Unknown Company";
   let jobId = "";
@@ -84,11 +113,11 @@ export const enrichJobFromUrl = async (url: string): Promise<Partial<Job>> => {
   try {
       const urlObj = new URL(url);
       
-      // Extract Job ID if present (common in Oracle, Workday, etc)
+      // Extract Job ID if present
       const idMatch = url.match(/\/job\/(\d+)/) || url.match(/jobId=(\d+)/) || url.match(/currentJobId=(\d+)/) || url.match(/\/(\d{6,})/);
       if (idMatch) {
           jobId = idMatch[1];
-          fallbackTitle = `Job ${jobId}`; // Better default than "Unknown"
+          fallbackTitle = `Job ${jobId}`; 
       }
 
       const pathParts = urlObj.pathname.split(/[-/_]/).filter(p => p.length > 2);
@@ -105,9 +134,8 @@ export const enrichJobFromUrl = async (url: string): Promise<Partial<Job>> => {
            const domain = urlObj.hostname.replace('www.', '').split('.')[0];
            if (domain) {
                fallbackCompany = domain.charAt(0).toUpperCase() + domain.slice(1);
-               // Handle common abbreviations known in this context
                if (fallbackCompany.toLowerCase() === 'jpmc') fallbackCompany = "JPMorgan Chase";
-               if (fallbackCompany.toLowerCase().includes('oracle')) fallbackCompany = "JPMorgan Chase"; // JPMC often uses generic oracle domains
+               if (fallbackCompany.toLowerCase().includes('oracle')) fallbackCompany = "JPMorgan Chase"; 
            }
       }
 
@@ -115,7 +143,6 @@ export const enrichJobFromUrl = async (url: string): Promise<Partial<Job>> => {
 
   let searchPrompt = "";
   if (url.includes('oraclecloud.com') && jobId) {
-      // Broadened strategy: Search the ID with JPMC, but also try generic "careers" + ID in case it's not JPMC.
       searchPrompt = `CRITICAL: Job ID is "${jobId}". 
       Perform these specific Google searches:
       1. "JPMorgan Chase job ${jobId}"
@@ -131,6 +158,7 @@ export const enrichJobFromUrl = async (url: string): Promise<Partial<Job>> => {
     I have a job posting link: "${url}".
     ${jobId ? `Job ID: ${jobId}` : ''}
     ${fallbackCompany !== "Unknown Company" ? `Company: ${fallbackCompany}` : ''}
+    ${fallbackTitle !== "Unknown Role" ? `Inferred Title from URL: ${fallbackTitle}` : ''}
     
     ${searchPrompt}
     
@@ -139,12 +167,12 @@ export const enrichJobFromUrl = async (url: string): Promise<Partial<Job>> => {
     ### INSTRUCTIONS
     1.  **Search Strategy**: Execute the searches above.
     2.  **Verify Integrity**: 
-        - If you find a generic "Careers" page with many jobs, DO NOT just pick the first one.
         - You MUST find the specific job title associated with ID ${jobId} or the link content.
-        - If you cannot find the specific job text because it is behind a login or not indexed, return the inferred title "${fallbackTitle}" or "Job ${jobId}" and an empty summary. **DO NOT** return "Manual Entry Required".
+        - If you cannot find the specific job text because it is behind a login or not indexed, return the inferred title "${fallbackTitle}" or "Job ${jobId}" and an empty summary.
+        - If the search results are vague, TRY TO INFER the job title from the URL string provided above ("${url}").
     3.  **Extract Data**:
-        - **Job Title**: The specific role (e.g., "User Experience Design Lead").
-        - **Company**: The organization hiring.
+        - **Job Title**: The specific role. If unknown, use the inferred title from the URL.
+        - **Company**: The organization hiring. If unknown, infer from the URL domain.
         - **Location**: City, Country, or "Remote".
         - **Summary**: A detailed job description. If you can't find it, return an empty string "".
         - **Posted Date**: Relative date (e.g. "2 days ago") or today's date if unknown.
@@ -166,15 +194,13 @@ export const enrichJobFromUrl = async (url: string): Promise<Partial<Job>> => {
     );
     const json = JSON.parse(cleanJsonOutput(response.text || "{}"));
     
-    // Fallback if AI fails to get good data
-    if (!json.title || json.title === "Unknown" || json.title.includes("Scouting")) json.title = fallbackTitle;
+    if (!json.title || json.title === "Unknown" || json.title.includes("Scouting") || json.title === "Job Posting") json.title = fallbackTitle;
     if (!json.company || json.company === "Detecting..." || ['linkedin', 'indeed', 'glassdoor'].includes(json.company?.toLowerCase())) json.company = fallbackCompany;
     if (!json.postedDate || json.postedDate === "Just now") json.postedDate = new Date().toLocaleDateString();
 
     return json;
   } catch (e) {
     console.error("Enrichment failed", e);
-    // Return regex fallback
     return {
         title: fallbackTitle,
         company: fallbackCompany,
@@ -183,6 +209,8 @@ export const enrichJobFromUrl = async (url: string): Promise<Partial<Job>> => {
     };
   }
 };
+// Re-export old name for compatibility if needed, though we updated usage
+export const enrichJobFromUrl = async (url: string) => enrichJob({ url });
 
 export const analyzeJob = async (job: Job): Promise<JobAnalysis> => {
   const ai = getClient();
