@@ -348,10 +348,15 @@ const App: React.FC = () => {
                     <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
                         
                         {/* LEFT COLUMN: FILTERS & WIDGETS */}
-                        <div className="lg:col-span-3 space-y-6 sticky top-[80px] self-start z-10">
-                            {/* Filter Widget */}
-                            <div className="bg-white dark:bg-[#1C1C1E] rounded-[24px] p-5 shadow-sm border border-black/5 dark:border-white/10 transition-colors">
-                                <h3 className="text-[11px] font-bold text-[#86868b] dark:text-[#98989D] uppercase tracking-wider mb-3">Locations</h3>
+                        <div className="lg:col-span-3 space-y-8 sticky top-[80px] self-start z-10 pr-2">
+                            {/* Filter Widget - Naked Style */}
+                            <div>
+                                <div className="flex items-center justify-between mb-3 px-2">
+                                    <h3 className="text-[11px] font-bold text-[#86868b] dark:text-[#98989D] uppercase tracking-wider">Locations</h3>
+                                    {cityFilter !== 'All' && (
+                                        <button onClick={() => setCityFilter('All')} className="text-[10px] font-bold text-[#0071e3] dark:text-[#0A84FF] hover:underline">Reset</button>
+                                    )}
+                                </div>
                                 <div className="space-y-1">
                                     {filterOptions.map(city => {
                                         const count = city === 'All' ? jobsInCurrentTab.length : jobsInCurrentTab.filter(j => city === 'Other' ? !['edinburgh', 'glasgow', 'remote', 'london', 'manchester'].some(s => j.location.toLowerCase().includes(s)) : j.location.toLowerCase().includes(city.toLowerCase())).length;
@@ -361,17 +366,20 @@ const App: React.FC = () => {
                                             <button 
                                                 key={city} 
                                                 onClick={() => setCityFilter(city)} 
-                                                className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-[13px] transition-all ${isSelected ? 'bg-[#F5F5F7] dark:bg-[#2C2C2E] font-semibold text-[#0071e3] dark:text-[#0A84FF]' : 'text-[#1d1d1f] dark:text-[#f5f5f7] hover:bg-[#F5F5F7] dark:hover:bg-[#2C2C2E]'}`}
+                                                className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-[13px] transition-all ${isSelected ? 'bg-[#E8E8ED] dark:bg-[#1C1C1E] font-semibold text-[#1d1d1f] dark:text-white' : 'text-[#636366] dark:text-[#98989D] hover:bg-[#E8E8ED]/50 dark:hover:bg-[#1C1C1E]/50'}`}
                                             >
                                                 <span>{city}</span>
-                                                <span className="text-[#86868b] dark:text-[#98989D] text-[11px]">{count}</span>
+                                                <span className={`text-[11px] ${isSelected ? 'text-[#1d1d1f] dark:text-white opacity-100' : 'text-[#86868b] dark:text-[#98989D] opacity-70'}`}>{count}</span>
                                             </button>
                                         );
                                     })}
                                 </div>
-                                
-                                <div className="w-full h-px bg-[#F5F5F7] dark:bg-[#38383A] my-5"></div>
-                                
+                            </div>
+
+                            <div className="w-full h-px bg-[#d2d2d7]/50 dark:bg-[#38383A]"></div>
+                            
+                            {/* Stats Panel - Naked Style */}
+                            <div className="px-2">
                                 <StatsPanel 
                                     jobs={jobsInCurrentTab} 
                                     selectedIndustry={industryFilter}
@@ -382,21 +390,24 @@ const App: React.FC = () => {
 
                         {/* RIGHT COLUMN: CONTENT */}
                         <div className="lg:col-span-9">
-                            {/* Tabs Pill */}
-                            <div className="flex items-center gap-2 mb-6 overflow-x-auto pb-2 scrollbar-hide">
-                                {['new', 'saved', 'archived'].map((tab) => {
-                                    const isActive = activeTab === tab;
-                                    return (
-                                        <button 
-                                            key={tab}
-                                            onClick={() => setActiveTab(tab as any)} 
-                                            className={`px-5 py-2 rounded-full text-[13px] font-medium capitalize whitespace-nowrap transition-all ${isActive ? 'bg-[#1d1d1f] dark:bg-white text-white dark:text-black' : 'bg-white dark:bg-[#1C1C1E] text-[#1d1d1f] dark:text-[#f5f5f7] border border-[#d2d2d7] dark:border-[#38383A] hover:border-[#86868b]'}`}
-                                        >
-                                            {tab}
-                                        </button>
-                                    );
-                                })}
-                                <div className="ml-auto flex items-center gap-2">
+                            {/* Segmented Control Toggle */}
+                            <div className="flex items-center justify-between mb-6">
+                                <div className="bg-[#E8E8ED] dark:bg-[#1C1C1E] p-1 rounded-lg inline-flex items-center h-10 border border-transparent dark:border-white/10">
+                                    {['new', 'saved', 'archived'].map((tab) => {
+                                        const isActive = activeTab === tab;
+                                        return (
+                                            <button 
+                                                key={tab}
+                                                onClick={() => setActiveTab(tab as any)} 
+                                                className={`px-6 h-full rounded-md text-[13px] font-semibold capitalize transition-all flex items-center justify-center ${isActive ? 'bg-white dark:bg-[#3A3A3C] text-black dark:text-white shadow-sm' : 'text-[#636366] dark:text-[#8E8E93] hover:text-black dark:hover:text-white'}`}
+                                            >
+                                                {tab}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+
+                                <div className="flex items-center gap-2">
                                     <span className="text-[11px] text-[#86868b] dark:text-[#98989D] font-medium mr-1">Sort by:</span>
                                     <button 
                                         onClick={() => setSortBy(sortBy === 'date' ? 'score' : 'date')}

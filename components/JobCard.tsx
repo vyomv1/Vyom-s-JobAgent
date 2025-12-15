@@ -1,7 +1,6 @@
-
 import React from 'react';
 import { Job } from '../types';
-import { AlertTriangle, Briefcase, MapPin, ExternalLink, TrendingUp, Trash2, Bookmark, Archive, Zap, ArrowRight } from 'lucide-react';
+import { Briefcase, MapPin, ExternalLink, Trash2, Bookmark, Archive, Zap, ArrowRight, TrendingUp } from 'lucide-react';
 
 interface JobCardProps {
   job: Job;
