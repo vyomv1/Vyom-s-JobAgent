@@ -187,7 +187,14 @@ const App: React.FC = () => {
           const placeholder = await addManualJob(data);
           if (!placeholder) return;
           
+          // Open Modal immediately with placeholder
+          setSelectedJob(placeholder);
+          setModalOpen(true);
+          setInitialModalTab('brief');
+          
           setAnalyzingCount(prev => prev + 1);
+          
+          // Enrich
           const enrichedDetails = await enrichJob(data);
           const enrichedJob = { 
               ...placeholder, 
@@ -195,8 +202,18 @@ const App: React.FC = () => {
               summary: enrichedDetails.summary || data.text || placeholder.summary
           };
           await addOrUpdateJob(enrichedJob);
+          
+          // Update selected job if modal is still open
+          setSelectedJob(prev => (prev && prev.id === placeholder.id ? enrichedJob : prev));
+
+          // Analyze
           const analysis = await analyzeJob(enrichedJob);
           await saveAnalysis(enrichedJob.id, analysis);
+          
+          // Update selected job with analysis
+          const analyzedJob = { ...enrichedJob, analysis };
+          setSelectedJob(prev => (prev && prev.id === placeholder.id ? analyzedJob : prev));
+
       } catch (e) {
           console.error("Error adding manual job", e);
       } finally {
