@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { Job } from '../types';
 import JobCard from './JobCard';
-import { Bookmark, Send, Users, Trophy } from 'lucide-react';
+import { Bookmark, Send, Users, Trophy, ClipboardList } from 'lucide-react';
 
 interface KanbanBoardProps {
   jobs: Job[];
@@ -19,6 +19,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ jobs, onGenerateKit, onToggle
   const columns: { id: Job['status'], title: string, icon: React.ReactNode, count: number }[] = [
       { id: 'saved', title: 'Saved', icon: <Bookmark size={14} />, count: jobs.filter(j => j.status === 'saved').length },
       { id: 'applied', title: 'Applied', icon: <Send size={14} />, count: jobs.filter(j => j.status === 'applied').length },
+      { id: 'assessment', title: 'Assessment', icon: <ClipboardList size={14} />, count: jobs.filter(j => j.status === 'assessment').length },
       { id: 'interview', title: 'Interview', icon: <Users size={14} />, count: jobs.filter(j => j.status === 'interview').length },
       { id: 'offer', title: 'Offer', icon: <Trophy size={14} />, count: jobs.filter(j => j.status === 'offer').length },
   ];

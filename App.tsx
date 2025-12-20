@@ -226,7 +226,7 @@ const App: React.FC = () => {
     return allJobs.filter(j => {
         const status = j.status || 'new';
         if (activeTab === 'new') return status === 'new';
-        if (activeTab === 'saved') return ['saved', 'applied', 'interview', 'offer'].includes(status);
+        if (activeTab === 'saved') return ['saved', 'applied', 'assessment', 'interview', 'offer'].includes(status);
         if (activeTab === 'archived') return status === 'archived';
         return false;
     });

@@ -1,4 +1,12 @@
 
+export interface Attachment {
+  id: string;
+  name: string;
+  type: string;
+  data: string; // Base64 string
+  size: number;
+}
+
 export interface Job {
   id: string;
   title: string;
@@ -7,7 +15,9 @@ export interface Job {
   url?: string;
   summary: string;
   source: string;
-  status?: 'new' | 'saved' | 'applied' | 'interview' | 'offer' | 'archived';
+  status?: 'new' | 'saved' | 'applied' | 'assessment' | 'interview' | 'offer' | 'archived';
+  notes?: string; // Can contain HTML
+  attachments?: Attachment[];
   appliedDate?: string;
   postedDate?: string; // e.g., "2 days ago"
   scoutedAt?: number; // Timestamp for auto-archiving

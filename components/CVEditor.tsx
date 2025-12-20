@@ -70,6 +70,18 @@ const CVEditor: React.FC = () => {
     saveContent();
   };
 
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'z') {
+      e.preventDefault();
+      if (e.shiftKey) {
+        document.execCommand('redo');
+      } else {
+        document.execCommand('undo');
+      }
+      saveContent();
+    }
+  };
+
   return (
     <div className={`flex h-[calc(100vh-140px)] gap-6 mx-auto relative px-6 pb-6 transition-all duration-500 ease-out ${showDoc ? 'w-full max-w-none' : 'max-w-[1400px]'}`}>
         
@@ -130,6 +142,7 @@ const CVEditor: React.FC = () => {
                      <div 
                         ref={editorRef}
                         contentEditable
+                        onKeyDown={handleKeyDown}
                         role="textbox"
                         aria-multiline="true"
                         className={`w-full h-max bg-white shadow-[0_2px_15px_-3px_rgba(0,0,0,0.07),0_10px_20px_-2px_rgba(0,0,0,0.04)] dark:shadow-[0_2px_15px_-3px_rgba(0,0,0,0.5)] border border-[#e8e8ed] p-[72px] outline-none text-[#1d1d1f] font-sans text-lg leading-[1.6] transition-all rounded-sm mb-16 ${showDoc ? 'max-w-full' : 'max-w-[850px]'}`}
