@@ -1,8 +1,7 @@
-
 import React, { useState } from 'react';
 import { Job } from '../types';
 import JobCard from './JobCard';
-import { Bookmark, Send, Users, Trophy, ClipboardList } from 'lucide-react';
+import { Bookmark, Send, Users, Trophy, ClipboardList, Plus } from 'lucide-react';
 
 interface KanbanBoardProps {
   jobs: Job[];
@@ -16,17 +15,21 @@ interface KanbanBoardProps {
 const KanbanBoard: React.FC<KanbanBoardProps> = ({ jobs, onGenerateKit, onToggleStatus, onDelete, onOpenDetail, onOpenAddModal }) => {
   const [draggedJobId, setDraggedJobId] = useState<string | null>(null);
 
-  const columns: { id: Job['status'], title: string, icon: React.ReactNode, count: number }[] = [
-      { id: 'saved', title: 'Saved', icon: <Bookmark size={14} />, count: jobs.filter(j => j.status === 'saved').length },
-      { id: 'applied', title: 'Applied', icon: <Send size={14} />, count: jobs.filter(j => j.status === 'applied').length },
-      { id: 'assessment', title: 'Assessment', icon: <ClipboardList size={14} />, count: jobs.filter(j => j.status === 'assessment').length },
-      { id: 'interview', title: 'Interview', icon: <Users size={14} />, count: jobs.filter(j => j.status === 'interview').length },
-      { id: 'offer', title: 'Offer', icon: <Trophy size={14} />, count: jobs.filter(j => j.status === 'offer').length },
+  const columns: { id: Job['status'], title: string, icon: React.ReactNode, count: number, color: string }[] = [
+      { id: 'saved', title: 'Saved', icon: <Bookmark size={14} />, count: jobs.filter(j => j.status === 'saved').length, color: 'bg-gray-500' },
+      { id: 'applied', title: 'Applied', icon: <Send size={14} />, count: jobs.filter(j => j.status === 'applied').length, color: 'bg-blue-500' },
+      { id: 'assessment', title: 'Assessment', icon: <ClipboardList size={14} />, count: jobs.filter(j => j.status === 'assessment').length, color: 'bg-purple-500' },
+      { id: 'interview', title: 'Interview', icon: <Users size={14} />, count: jobs.filter(j => j.status === 'interview').length, color: 'bg-orange-500' },
+      { id: 'offer', title: 'Offer', icon: <Trophy size={14} />, count: jobs.filter(j => j.status === 'offer').length, color: 'bg-green-500' },
   ];
 
   const handleDragStart = (e: React.DragEvent, id: string) => {
       setDraggedJobId(id);
       e.dataTransfer.effectAllowed = "move";
+      // Transparent drag image hack
+      const img = new Image();
+      img.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+      e.dataTransfer.setDragImage(img, 0, 0);
   };
 
   const handleDragOver = (e: React.DragEvent) => {
@@ -43,34 +46,37 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ jobs, onGenerateKit, onToggle
   };
 
   return (
-    // Removed -ml-6 because the parent container is w-full (no padding).
-    // The spacer handles the indentation.
-    <div className="flex gap-4 overflow-x-auto w-full pb-8 pt-2 items-start h-full scrollbar-hide">
+    <div className="flex gap-6 overflow-x-auto w-full pb-8 items-start h-full scrollbar-hide px-6">
       
-      {/* Spacer to align with "Pipeline" title (max-w-[1024px] px-6) */}
-      <div className="shrink-0 w-[calc(50vw-512px+24px)] hidden min-[1024px]:block"></div>
-      <div className="shrink-0 w-6 min-[1024px]:hidden"></div>
+      {/* Centering spacer for large screens if needed, otherwise padding handles it */}
+      <div className="shrink-0 w-[calc(50vw-600px)] hidden min-[1200px]:block"></div>
 
       {columns.map(col => {
             const colJobs = jobs.filter(j => j.status === col.id);
             return (
                 <div 
                     key={col.id}
-                    className="flex flex-col min-w-[320px] max-w-[320px] bg-[#E8E8ED]/50 dark:bg-[#1C1C1E]/50 rounded-[16px] p-2 h-full border border-white/50 dark:border-white/5 backdrop-blur-sm"
+                    className="flex flex-col min-w-[340px] max-w-[340px] h-full rounded-[24px] bg-[#f5f5f7]/60 dark:bg-[#1C1C1E]/60 border border-white/50 dark:border-white/5 backdrop-blur-xl transition-colors ring-1 ring-black/5"
                     onDragOver={handleDragOver}
                     onDrop={(e) => handleDrop(e, col.id)}
                 >
-                    <div className="flex items-center justify-between p-3 mb-1 shrink-0">
-                        <h3 className="font-semibold text-[13px] text-[#1d1d1f] dark:text-[#f5f5f7] flex items-center gap-2">
-                            {col.icon} {col.title}
-                        </h3>
-                        <span className="text-[10px] font-bold text-[#86868b] dark:text-[#98989D] bg-white dark:bg-[#2C2C2E] px-2 py-0.5 rounded-full shadow-sm">{col.count}</span>
+                    <div className="flex items-center justify-between p-5 mb-0 shrink-0 sticky top-0 bg-transparent z-10">
+                        <div className="flex items-center gap-2">
+                             <div className={`w-2 h-2 rounded-full ${col.color}`}></div>
+                             <h3 className="font-bold text-[15px] text-[#1d1d1f] dark:text-white tracking-tight">
+                                {col.title}
+                             </h3>
+                        </div>
+                        <span className="text-[11px] font-bold text-[#86868b] dark:text-[#98989D] bg-white dark:bg-[#2C2C2E] px-2.5 py-1 rounded-full shadow-sm border border-black/5 dark:border-white/5">{col.count}</span>
                     </div>
                     
-                    <div className="flex-1 space-y-2 overflow-y-auto px-1 pb-4 custom-scrollbar">
+                    <div className="flex-1 space-y-3 overflow-y-auto px-4 pb-4 custom-scrollbar">
                         {colJobs.length === 0 && (
-                            <div className="h-20 border-2 border-dashed border-[#d2d2d7]/50 dark:border-[#38383A] rounded-lg flex items-center justify-center">
-                                <span className="text-[10px] text-[#86868b] dark:text-[#98989D] font-medium">Empty</span>
+                            <div className="h-32 border-2 border-dashed border-[#d2d2d7]/50 dark:border-[#38383A] rounded-2xl flex flex-col items-center justify-center gap-2 group cursor-default">
+                                <div className="p-3 bg-gray-50 dark:bg-white/5 rounded-full text-gray-300 dark:text-gray-600 group-hover:text-gray-400 transition-colors">
+                                    <Plus size={20} />
+                                </div>
+                                <span className="text-[11px] text-[#86868b] dark:text-[#98989D] font-medium">Empty Stage</span>
                             </div>
                         )}
                         {colJobs.map(job => (
@@ -78,7 +84,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ jobs, onGenerateKit, onToggle
                                 key={job.id}
                                 draggable
                                 onDragStart={(e) => handleDragStart(e, job.id)}
-                                className="cursor-grab active:cursor-grabbing hover:scale-[1.02] transition-transform"
+                                className={`cursor-grab active:cursor-grabbing transition-all duration-200 ${draggedJobId === job.id ? 'opacity-30 scale-95 rotate-3 grayscale' : 'hover:scale-[1.02] hover:-translate-y-1'}`}
                             >
                                 <JobCard 
                                     job={job} 
@@ -94,7 +100,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ jobs, onGenerateKit, onToggle
             );
       })}
       
-      {/* Trailing padding for scroll */}
+      {/* Trailing padding */}
       <div className="shrink-0 w-6"></div>
     </div>
   );

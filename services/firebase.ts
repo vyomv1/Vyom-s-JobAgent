@@ -182,6 +182,16 @@ export const saveCV = async (content: string) => {
     }
 };
 
+export const saveJobCV = async (jobId: string, content: string) => {
+    if (!db) return;
+    try {
+        const docRef = doc(db, "jobs", jobId);
+        await updateDoc(docRef, { tailoredCv: content });
+    } catch (e) {
+        console.error("Error saving job CV:", e);
+    }
+};
+
 export const getCV = async () => {
     if (!db) return "";
     try {

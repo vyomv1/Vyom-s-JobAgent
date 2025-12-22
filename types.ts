@@ -24,10 +24,12 @@ export interface Job {
   seniorityScore?: 'Mid' | 'Senior' | 'Lead';
   isRelatedDiscovery?: boolean;
   analysis?: JobAnalysis;
+  tailoredCv?: string; // For Suggestion 6
 }
 
 export interface JobAnalysis {
   score: number;
+  scoreReasoning: string; // Explains the calculation (e.g., +20 Fintech boost)
   verdict: string;
   strategy: string;
   isHighValue: boolean;

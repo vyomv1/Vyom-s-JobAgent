@@ -4,15 +4,8 @@ import { Job, JobAnalysis } from "../types";
 import { SYSTEM_INSTRUCTION } from "../constants";
 
 const getClient = () => {
-    let apiKey = '';
-    try { // @ts-ignore
-      apiKey = import.meta.env.VITE_API_KEY;
-    } catch (e) {}
-    if (!apiKey) {
-      try { // @ts-ignore
-        apiKey = process.env.VITE_API_KEY || process.env.API_KEY;
-      } catch (e) {}
-    }
+    // Guidelines: Use process.env.API_KEY directly and initialize via named parameter.
+    const apiKey = process.env.API_KEY;
     if (!apiKey) throw new Error("API Key not found.");
     return new GoogleGenAI({ apiKey });
 };
@@ -42,15 +35,16 @@ const cleanJsonOutput = (text: string) => {
     return jsonMatch ? jsonMatch[1] : text.replace(/```json/g, '').replace(/```/g, '').trim();
 };
 
-export const searchAndParseJobs = async (query: string): Promise<Job[]> => {
+export const searchAndParseJobs = async (role: string, location: string): Promise<Job[]> => {
   const ai = getClient();
+  const query = `("${role}") "${location}" -Intern -Trainee -Apprentice`;
   const prompt = `
     ### ROLE DEFINITION
     You are an expert Talent Scout Agent. Your goal is to identify high-quality Mid-Level, Senior, and Leadership UX/Product Design opportunities.
     ### SEARCH QUERY
     "${query}"
     ### SEARCH STRATEGY
-    1.  **Broad UK Search**: Find roles across the UK, including London, Manchester, Remote, etc.
+    1.  **Broad Search**: Find roles matching the role and location specified.
     2.  **Seniority**: Target "Senior", "Lead", "Staff", but accept generic titles like "Product Designer". Exclude explicit "Intern", "Apprentice" roles.
     3.  **Data Capture**: For each job, find **SALARY** and **WORK PATTERN** (Hybrid/Remote) and put it in the summary.
     4.  **Recursive Discovery**: Analyze search results for "People also viewed" or "Similar jobs" to find hidden roles and flag them.
@@ -58,7 +52,12 @@ export const searchAndParseJobs = async (query: string): Promise<Job[]> => {
     Return a JSON array of 8-10 listings in a markdown code block.
     [{"job_title": "String", "company": "String", "seniority_score": "Mid|Senior|Lead", "source_url": "URL", "is_related_job_discovery": boolean, "summary": "String", "posted_date": "String", "location": "String", "source": "String"}]
   `;
-  const response = await retryWithBackoff<GenerateContentResponse>(() => ai.models.generateContent({ model: "gemini-2.5-flash", contents: prompt, config: { tools: [{ googleSearch: {} }] } }));
+  // Using gemini-3-flash-preview for basic text and search tasks as recommended.
+  const response = await retryWithBackoff<GenerateContentResponse>(() => ai.models.generateContent({ 
+    model: "gemini-3-flash-preview", 
+    contents: prompt, 
+    config: { tools: [{ googleSearch: {} }] } 
+  }));
   
   let rawJobs = [];
   try {
@@ -77,7 +76,6 @@ export const enrichJob = async (input: { url?: string; text?: string; title?: st
   const ai = getClient();
   const { url = '', text = '', title = '', company = '' } = input;
   
-  // 1. If we have raw text, we skip the search and just parse the text.
   if (text.length > 50) {
       const prompt = `
         I have a raw job description text.
@@ -94,9 +92,10 @@ export const enrichJob = async (input: { url?: string; text?: string; title?: st
         { "title": "string", "company": "string", "location": "string", "summary": "string (cleaned)", "postedDate": "string" }
       `;
       try {
+        // Using gemini-3-flash-preview for general text extraction.
         const response = await retryWithBackoff<GenerateContentResponse>(() => 
             ai.models.generateContent({ 
-                model: "gemini-2.5-flash", 
+                model: "gemini-3-flash-preview", 
                 contents: prompt
             })
         );
@@ -104,22 +103,17 @@ export const enrichJob = async (input: { url?: string; text?: string; title?: st
       } catch (e) { console.error("Text parsing failed", e); return { summary: text }; }
   }
 
-  // 2. Fallback to URL Search (Existing Logic)
-  // Attempt local regex parsing first as a fallback/baseline
   let fallbackTitle = "Unknown Role";
   let fallbackCompany = "Unknown Company";
   let jobId = "";
 
   try {
       const urlObj = new URL(url);
-      
-      // Extract Job ID if present
       const idMatch = url.match(/\/job\/(\d+)/) || url.match(/jobId=(\d+)/) || url.match(/currentJobId=(\d+)/) || url.match(/\/(\d{6,})/);
       if (idMatch) {
           jobId = idMatch[1];
           fallbackTitle = `Job ${jobId}`; 
       }
-
       const pathParts = urlObj.pathname.split(/[-/_]/).filter(p => p.length > 2);
       if (pathParts.length > 0) {
           const meaningful = pathParts.filter(p => !['job', 'view', 'linkedin', 'careers', 'detail', 'uk', 'sites', 'en', 'candidateexperience', 'hcmui'].includes(p.toLowerCase()));
@@ -128,17 +122,13 @@ export const enrichJob = async (input: { url?: string; text?: string; title?: st
               if (meaningful.length > 3) fallbackCompany = meaningful[2].charAt(0).toUpperCase() + meaningful[2].slice(1);
           }
       }
-      
-      // Domain fallback for company
       if (fallbackCompany === "Unknown Company") {
            const domain = urlObj.hostname.replace('www.', '').split('.')[0];
            if (domain) {
                fallbackCompany = domain.charAt(0).toUpperCase() + domain.slice(1);
                if (fallbackCompany.toLowerCase() === 'jpmc') fallbackCompany = "JPMorgan Chase";
-               if (fallbackCompany.toLowerCase().includes('oracle')) fallbackCompany = "JPMorgan Chase"; 
            }
       }
-
   } catch(e) {}
 
   let searchPrompt = "";
@@ -147,106 +137,48 @@ export const enrichJob = async (input: { url?: string; text?: string; title?: st
       Perform these specific Google searches:
       1. "JPMorgan Chase job ${jobId}"
       2. "site:oraclecloud.com ${jobId}"
-      3. "${jobId} careers UK"
-      
-      Use the search results to find the text of the job description.`;
+      3. "${jobId} careers UK"`;
   } else {
       searchPrompt = `Search for: "${url}" OR "${fallbackCompany} job ${jobId || fallbackTitle}"`;
   }
 
   const prompt = `
     I have a job posting link: "${url}".
-    ${jobId ? `Job ID: ${jobId}` : ''}
-    ${fallbackCompany !== "Unknown Company" ? `Company: ${fallbackCompany}` : ''}
-    ${fallbackTitle !== "Unknown Role" ? `Inferred Title from URL: ${fallbackTitle}` : ''}
-    
     ${searchPrompt}
-    
-    You are an expert Talent Scout Agent. Your task is to extract the details of this specific job posting.
-    
-    ### INSTRUCTIONS
-    1.  **Search Strategy**: Execute the searches above.
-    2.  **Verify Integrity**: 
-        - You MUST find the specific job title associated with ID ${jobId} or the link content.
-        - If you cannot find the specific job text because it is behind a login or not indexed, return the inferred title "${fallbackTitle}" or "Job ${jobId}" and an empty summary.
-        - If the search results are vague, TRY TO INFER the job title from the URL string provided above ("${url}").
-    3.  **Extract Data**:
-        - **Job Title**: The specific role. If unknown, use the inferred title from the URL.
-        - **Company**: The organization hiring. If unknown, infer from the URL domain.
-        - **Location**: City, Country, or "Remote".
-        - **Summary**: A detailed job description. If you can't find it, return an empty string "".
-        - **Posted Date**: Relative date (e.g. "2 days ago") or today's date if unknown.
-
-    ### OUTPUT FORMAT
-    Return valid JSON in a markdown code block matching this schema:
+    Return valid JSON:
     { "title": "string", "company": "string", "location": "string", "summary": "string", "postedDate": "string" }
   `;
   
   try {
+    // Using gemini-3-flash-preview for search-grounded enrichment.
     const response = await retryWithBackoff<GenerateContentResponse>(() => 
         ai.models.generateContent({ 
-            model: "gemini-2.5-flash", 
+            model: "gemini-3-flash-preview", 
             contents: prompt, 
-            config: { 
-                tools: [{ googleSearch: {} }],
-            } 
+            config: { tools: [{ googleSearch: {} }] } 
         })
     );
-    const json = JSON.parse(cleanJsonOutput(response.text || "{}"));
-    
-    if (!json.title || json.title === "Unknown" || json.title.includes("Scouting") || json.title === "Job Posting") json.title = fallbackTitle;
-    if (!json.company || json.company === "Detecting..." || ['linkedin', 'indeed', 'glassdoor'].includes(json.company?.toLowerCase())) json.company = fallbackCompany;
-    if (!json.postedDate || json.postedDate === "Just now") json.postedDate = new Date().toLocaleDateString();
-
-    return json;
+    return JSON.parse(cleanJsonOutput(response.text || "{}"));
   } catch (e) {
-    console.error("Enrichment failed", e);
-    return {
-        title: fallbackTitle,
-        company: fallbackCompany,
-        summary: "",
-        postedDate: new Date().toLocaleDateString()
-    };
+    return { title: fallbackTitle, company: fallbackCompany, summary: "", postedDate: new Date().toLocaleDateString() };
   }
 };
-// Re-export old name for compatibility if needed, though we updated usage
-export const enrichJobFromUrl = async (url: string) => enrichJob({ url });
 
 export const analyzeJob = async (job: Job): Promise<JobAnalysis> => {
   const ai = getClient();
   const safeSummary = (job.summary || "").substring(0, 5000);
   const prompt = `
     Analyze this job for the user based on the System Instructions. 
-    **CRITICAL**: ADDRESS THE USER AS "YOU". DO NOT USE "VYOM".
-
     Job: ${job.title} at ${job.company}. Summary: ${safeSummary}
     
-    ### EXTRACTION & CLASSIFICATION
-    1.  **Industry**: Classify the COMPANY into one of these specific buckets:
-        - "Fintech & Banking" (Banks, Wealth, Trading, Crypto)
-        - "Insurance" (Underwriting, Claims, Life, Pension)
-        - "Public Sector" (Gov, Council, NHS, Education, Charity)
-        - "Agency & Consulting" (Design Studios, Digital Agencies, Consultancies)
-        - "Retail & E-commerce"
-        - "Media & Entertainment"
-        - "Energy & Utilities"
-        - "Tech & Product" (SaaS, Apps, Startups)
-        - "Other"
-    2.  **Work Pattern**: Extract "Remote", "Hybrid", or "On-site".
-    3.  **Experience**: Extract years required (e.g., "5+ years").
-    4.  **Salary**: Extract pay range (e.g., "£60k - £70k").
-
     ### SCORING & STRATEGY
-    - **Score**: Apply industry boosts (+20 for Fintech/Insurance, +10 for Public Sector).
-    - **Verdict (Executive Summary)**: Write a sharp, 3-sentence Executive Summary suitable for a Senior Designer. Focus on the BUSINESS CHALLENGE this role solves and the STRATEGIC FIT. Do not just repeat the requirements. Frame it as an opportunity.
-    - **Strategy**: YOU MUST connect the job to **your** specific achievements (Trove, Stonewater, Intact) using "Your".
-
-    Return a JSON object with this EXACT schema:
-    { "score": number, "verdict": "string", "strategy": "string", "isHighValue": boolean, "isCommuteRisk": boolean, "matchedKeywords": ["string"], "workPattern": "string", "experienceRequired": "string", "salary": "string", "industry": "string" }
+    - **Score Reasoning**: Provide a bulleted list of why this score was given.
+    Return valid JSON matching JobAnalysis interface.
   `;
 
+  // Reasoning task, gemini-3-flash-preview is suitable here.
   const response = await retryWithBackoff<GenerateContentResponse>(() => ai.models.generateContent({
-    model: "gemini-2.5-flash",
+    model: "gemini-3-flash-preview",
     contents: prompt,
     config: {
       systemInstruction: SYSTEM_INSTRUCTION,
@@ -255,10 +187,15 @@ export const analyzeJob = async (job: Job): Promise<JobAnalysis> => {
       responseSchema: {
         type: Type.OBJECT,
         properties: {
-          score: { type: Type.NUMBER }, verdict: { type: Type.STRING },
-          strategy: { type: Type.STRING }, isHighValue: { type: Type.BOOLEAN },
-          isCommuteRisk: { type: Type.BOOLEAN }, workPattern: { type: Type.STRING },
-          experienceRequired: { type: Type.STRING }, salary: { type: Type.STRING },
+          score: { type: Type.NUMBER },
+          scoreReasoning: { type: Type.STRING },
+          verdict: { type: Type.STRING },
+          strategy: { type: Type.STRING },
+          isHighValue: { type: Type.BOOLEAN },
+          isCommuteRisk: { type: Type.BOOLEAN },
+          workPattern: { type: Type.STRING },
+          experienceRequired: { type: Type.STRING },
+          salary: { type: Type.STRING },
           industry: { type: Type.STRING },
           matchedKeywords: { type: Type.ARRAY, items: { type: Type.STRING } }
         }
@@ -269,9 +206,8 @@ export const analyzeJob = async (job: Job): Promise<JobAnalysis> => {
   try {
     return JSON.parse(cleanJsonOutput(response.text || "{}"));
   } catch (e) {
-    console.error("JSON Parse Error in analysis:", e);
     return {
-      score: 0, verdict: "Analysis failed.", strategy: "Could not parse AI response.",
+      score: 0, scoreReasoning: "Analysis failed.", verdict: "Analysis failed.", strategy: "Could not parse AI response.",
       isHighValue: false, isCommuteRisk: false, matchedKeywords: []
     };
   }
@@ -283,56 +219,35 @@ export const generateApplicationKit = async (job: Job, analysis: JobAnalysis): P
     Create a deep, executive-level "Application Strategy Kit" for the user applying to:
     Role: ${job.title} at ${job.company}.
     
-    ### CRITICAL SOURCE MATERIAL
-    You MUST use the following Job Summary as the **absolute truth** for the job requirements. Do not hallucinate other requirements.
-    
     Job Summary:
     """
     ${job.summary}
     """
     
-    Initial Strategy: ${analysis.strategy}
-    
-    ACT AS: A Senior Product Design Hiring Manager at a top-tier tech firm.
-    
-    PROVIDE THE FOLLOWING SECTIONS (Use Markdown):
-    
-    # 🎯 The Hiring Manager's Mindset
-    (Reveal what they are *actually* scared of for this specific role, e.g., "They are afraid of a designer who slows down shipping.")
-    
-    # 🔑 The 'Trojan Horse' Strategy
-    (A unique angle to pitch myself that other candidates won't think of. Connect my background in Design Systems (Trove) or Compliance (Intact) specifically to their needs found in the summary.)
-    
-    # 📝 Resume Micro-Adjustments
-    (3 specific bullets to re-write on my CV. Show "Before" vs "After".)
-    
-    # 🎤 Behavioral Interview Prep
-    (3 specific, difficult questions they will ask based on the summary. Provide the "STAR" points I should hit for each.)
-    
-    # ✉️ High-Signal Cover Letter
-    (A draft that is SHORT, PUNCHY, and devoid of fluff. No "I am writing to apply". Start with value. Use the job's terminology.)
-    
-    TONE: Inside baseball, tactical, no corporate jargon. Address user as "You".
+    Provide sections: Mindset, Trojan Horse, Resume Adjustments, Interview Prep, Cover Letter.
   `;
-  const response = await retryWithBackoff<GenerateContentResponse>(() => ai.models.generateContent({ model: "gemini-3-pro-preview", contents: prompt, config: { systemInstruction: SYSTEM_INSTRUCTION } }));
+  // Complex reasoning/coding task, use gemini-3-pro-preview as per guidelines.
+  const response = await retryWithBackoff<GenerateContentResponse>(() => ai.models.generateContent({ 
+    model: "gemini-3-pro-preview", 
+    contents: prompt, 
+    config: { systemInstruction: SYSTEM_INSTRUCTION } 
+  }));
   return response.text || "Could not generate kit.";
 };
 
 export const improveCV = async (currentCv: string, instruction: string): Promise<string> => {
     const ai = getClient();
     const prompt = `
-      You are an expert CV writer for Senior Designers. 
+      Rewriter for Senior Designers. 
       Action: ${instruction}
-      
-      Current Text:
-      "${currentCv}"
-      
-      Return ONLY the rewritten text. Maintain markdown formatting if present. Keep it professional, punchy, and result-oriented.
+      Current Text: "${currentCv}"
+      Return ONLY the rewritten text.
     `;
+    // Text refinement task, using gemini-3-flash-preview.
     const response = await retryWithBackoff<GenerateContentResponse>(() => ai.models.generateContent({ 
-        model: "gemini-2.5-flash", 
+        model: "gemini-3-flash-preview", 
         contents: prompt, 
-        config: { systemInstruction: "Act as a Senior Resume Writer. Output only the revised text." }
+        config: { systemInstruction: "Act as a Senior Resume Writer." }
     }));
     return response.text || currentCv;
 };

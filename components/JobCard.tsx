@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Job } from '../types';
-import { Briefcase, MapPin, ExternalLink, Trash2, Bookmark, Archive, Zap, ArrowRight, TrendingUp } from 'lucide-react';
+import { Briefcase, MapPin, Trash2, Bookmark, Archive, Zap, Users, Clock, Flame, CheckCircle2, MoreHorizontal } from 'lucide-react';
 
 interface JobCardProps {
   job: Job;
@@ -9,130 +9,169 @@ interface JobCardProps {
   onToggleStatus: (id: string, currentStatus: Job['status']) => void;
   onDelete: (id: string) => void;
   isKanban?: boolean;
+  isSelected?: boolean;
+  onSelect?: (id: string) => void;
+  isSelectMode?: boolean;
 }
 
-const JobCard: React.FC<JobCardProps> = ({ job, onOpenDetail, onToggleStatus, onDelete, isKanban }) => {
+const FollowUpTimer = ({ appliedDate }: { appliedDate?: string }) => {
+    if (!appliedDate) return null;
+    const applied = new Date(appliedDate);
+    const now = new Date();
+    const diffTime = now.getTime() - applied.getTime(); // Removed Math.abs to correctly calculate past time
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24)); 
+    const followUpDay = 7;
+    const remaining = followUpDay - diffDays;
+
+    if (remaining <= 0) return <span className="text-[10px] font-bold text-red-500 flex items-center gap-1 animate-pulse bg-red-50 dark:bg-red-900/20 px-1.5 py-0.5 rounded"><Flame size={12} /> FOLLOW UP NOW</span>;
+    return <span className="text-[10px] font-bold text-apple-gray flex items-center gap-1 bg-gray-100 dark:bg-white/10 px-1.5 py-0.5 rounded"><Clock size={10} /> {remaining}d left</span>;
+};
+
+const ScoreRing = ({ score }: { score: number }) => {
+    const radius = 16;
+    const circumference = 2 * Math.PI * radius;
+    const offset = circumference - (score / 100) * circumference;
+    
+    let color = '#E5E5EA'; // Gray
+    if (score >= 85) color = '#34C759'; // Green
+    else if (score >= 70) color = '#0071e3'; // Blue
+    else if (score >= 50) color = '#FFCC00'; // Yellow
+
+    return (
+        <div className="relative w-10 h-10 flex items-center justify-center">
+            <svg className="w-full h-full transform -rotate-90" viewBox="0 0 40 40">
+                <circle cx="20" cy="20" r={radius} stroke="currentColor" strokeWidth="3" fill="transparent" className="text-gray-200 dark:text-white/10" />
+                <circle 
+                    cx="20" 
+                    cy="20" 
+                    r={radius} 
+                    stroke={color} 
+                    strokeWidth="3" 
+                    fill="transparent" 
+                    strokeDasharray={circumference} 
+                    strokeDashoffset={offset} 
+                    strokeLinecap="round"
+                />
+            </svg>
+            <span className="absolute text-[10px] font-bold text-apple-text dark:text-white">{score}</span>
+        </div>
+    );
+};
+
+const JobCard: React.FC<JobCardProps> = ({ job, onOpenDetail, onToggleStatus, onDelete, isKanban, isSelected, onSelect, isSelectMode }) => {
   const analysis = job.analysis;
   const status = job.status || 'new';
   const isSavedOrBetter = ['saved', 'applied', 'assessment', 'interview', 'offer'].includes(status);
-  
-  const getAbsoluteUrl = (url?: string) => {
-      if (!url || url === 'Manual Entry') return null;
-      return url.startsWith('http') ? url : `https://${url}`;
-  };
+  const score = analysis?.score || 0;
 
-  const applyUrl = getAbsoluteUrl(job.url) || `https://www.google.com/search?q=${encodeURIComponent(`${job.title} ${job.company} jobs`)}`;
-
-  // Tiny Card for Kanban - Ultra Compact
+  // Kanban View: Compact, Information Dense
   if (isKanban) {
       return (
         <div 
-            className="bg-white dark:bg-[#1C1C1E] rounded-xl p-4 cursor-pointer shadow-[0_1px_3px_rgba(0,0,0,0.06)] hover:shadow-[0_4px_8px_rgba(0,0,0,0.08)] transition-all flex flex-col gap-2 border border-transparent hover:border-[#0071e3]/30 dark:hover:border-[#0A84FF]/30 dark:border-white/5"
+            className="bg-white dark:bg-[#1C1C1E] rounded-[16px] p-4 cursor-pointer shadow-sm hover:shadow-md transition-all flex flex-col gap-3 border border-black/5 dark:border-white/5 hover:border-apple-blue/30 group"
             onClick={() => onOpenDetail(job)}
         >
-            <div className="flex justify-between items-start gap-1">
-                <h4 className="font-bold text-[15px] text-[#1d1d1f] dark:text-[#f5f5f7] leading-snug line-clamp-2">
-                    {job.title}
-                </h4>
+            <div className="flex justify-between items-start gap-2">
+                <h4 className="font-bold text-[13px] text-apple-text dark:text-white leading-snug line-clamp-2">{job.title}</h4>
+                {score > 0 && (
+                    <span className={`shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded ${score >= 80 ? 'bg-green-100 text-green-700 dark:bg-green-900/30' : 'bg-gray-100 text-gray-600 dark:bg-white/10'}`}>
+                        {score}%
+                    </span>
+                )}
             </div>
             
-            <p className="text-[13px] text-[#86868b] dark:text-[#98989D] font-medium truncate">{job.company}</p>
-            
-            <div className="flex items-center justify-between mt-2">
-                 {analysis?.score ? (
-                     <span className={`px-2 py-0.5 rounded text-[11px] font-bold ${analysis.score > 70 ? 'bg-[#E6F4EA] dark:bg-[#1e3a29] text-[#137333] dark:text-[#45D469]' : 'bg-[#F5F5F7] dark:bg-[#2C2C2E] text-[#5F6368] dark:text-[#98989D]'}`}>
-                        {analysis.score}%
-                     </span>
-                 ) : (
-                    <span className="text-[10px] text-[#d2d2d7] dark:text-[#555]">No Score</span>
-                 )}
-                 <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: job.seniorityScore === 'Senior' || job.seniorityScore === 'Lead' ? '#34C759' : '#FFCC00' }}></div>
+            <div className="flex flex-col gap-1">
+                <p className="text-[12px] text-apple-gray dark:text-gray-400 font-medium truncate">{job.company}</p>
+                <div className="flex items-center gap-2">
+                    {job.seniorityScore && (
+                         <div className="flex items-center gap-1.5">
+                            <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: job.seniorityScore === 'Senior' || job.seniorityScore === 'Lead' ? '#34C759' : '#FFCC00' }}></div>
+                            <span className="text-[10px] text-apple-gray">{job.seniorityScore}</span>
+                         </div>
+                    )}
+                </div>
             </div>
+
+            {status === 'applied' && (
+                <div className="pt-2 border-t border-gray-100 dark:border-white/5 mt-auto">
+                    <FollowUpTimer appliedDate={job.appliedDate} />
+                </div>
+            )}
         </div>
       );
   }
 
-  // Full "Bento" Card for Dashboard
+  // Dashboard View: Rich Card
   return (
     <div 
-        onClick={() => onOpenDetail(job)}
-        className={`apple-card p-8 group cursor-pointer border border-transparent relative hover:border-[#0071e3]/10 dark:hover:border-[#0A84FF]/20 ${status === 'archived' ? 'opacity-60 grayscale' : ''}`}
+        onClick={() => isSelectMode ? onSelect?.(job.id) : onOpenDetail(job)}
+        className={`apple-card p-0 group cursor-pointer border relative transition-all duration-300 overflow-hidden flex flex-col
+            ${isSelected ? 'ring-2 ring-apple-blue border-apple-blue transform scale-[1.01]' : 'border-black/5 dark:border-white/5'} 
+            ${status === 'archived' ? 'opacity-60 grayscale' : 'bg-white dark:bg-[#1C1C1E]'}
+        `}
     >
-      
-      {/* Top Right Actions */}
-      <div className="absolute top-6 right-6 flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity z-10">
-         {status !== 'archived' && (
-             <button 
-                onClick={(e) => { e.stopPropagation(); onToggleStatus(job.id, status); }}
-                className={`w-9 h-9 flex items-center justify-center rounded-full transition-colors shadow-sm ${isSavedOrBetter 
-                    ? 'bg-[#0071e3] text-white hover:bg-[#0077ED] dark:bg-[#0A84FF]' 
-                    : 'bg-white dark:bg-[#2C2C2E] text-[#86868b] border border-[#d2d2d7] dark:border-[#38383A] hover:border-[#0071e3] hover:text-[#0071e3] dark:hover:border-[#0A84FF] dark:hover:text-[#0A84FF]'}`}
-                title={isSavedOrBetter ? "Saved" : "Save Job"}
-             >
-                 <Bookmark size={16} fill={isSavedOrBetter ? "currentColor" : "none"} />
-             </button>
-         )}
-         
-         <button 
-            onClick={(e) => { e.stopPropagation(); onDelete(job.id); }} 
-            className="w-9 h-9 flex items-center justify-center rounded-full bg-white dark:bg-[#2C2C2E] border border-[#d2d2d7] dark:border-[#38383A] hover:bg-[#FF3B30] hover:text-white hover:border-[#FF3B30] text-[#86868b] transition-colors shadow-sm"
-            title="Archive"
-         >
-            {status === 'archived' ? <Trash2 size={16} /> : <Archive size={16} />}
-         </button>
-      </div>
+      {/* High Value Stripe */}
+      {analysis?.isHighValue && <div className="h-1 w-full bg-gradient-to-r from-emerald-400 to-emerald-600"></div>}
 
-      <div className="flex flex-col sm:flex-row gap-6 items-start">
-          
-          <div className="flex-1 pr-12">
-             <div className="mb-2 flex items-center gap-3">
-                 <h3 className="text-[22px] font-semibold text-[#1d1d1f] dark:text-[#f5f5f7] tracking-tight group-hover:text-[#0071e3] dark:group-hover:text-[#0A84FF] transition-colors">
-                    {job.title}
-                 </h3>
-                 {job.isRelatedDiscovery && <span className="bg-[#FFCC00] text-black text-[10px] font-bold px-1.5 py-0.5 rounded">NEW</span>}
+      <div className="p-6 flex flex-col h-full">
+          <div className="flex justify-between items-start mb-4">
+             <div className="flex-1 pr-4">
+                 <h3 className="text-[17px] font-bold tracking-tight text-apple-text dark:text-white group-hover:text-apple-blue transition-colors leading-tight mb-1.5">{job.title}</h3>
+                 <div className="flex items-center gap-2 text-[13px] font-medium text-apple-gray dark:text-gray-400">
+                    <span className="flex items-center gap-1.5 text-black dark:text-gray-200"><Briefcase size={12}/> {job.company}</span>
+                    <span className="text-gray-300 dark:text-white/20">•</span>
+                    <span className="flex items-center gap-1.5"><MapPin size={12}/> {job.location}</span>
+                 </div>
              </div>
              
-             <div className="flex items-center gap-4 text-[13px] font-medium text-[#86868b] dark:text-[#98989D] mb-5">
-                <span className="flex items-center gap-1.5"><Briefcase size={14}/> {job.company}</span>
-                <span className="w-1 h-1 bg-[#d2d2d7] dark:bg-[#38383A] rounded-full"></span>
-                <span className="flex items-center gap-1.5"><MapPin size={14}/> {job.location}</span>
-                <span className="w-1 h-1 bg-[#d2d2d7] dark:bg-[#38383A] rounded-full"></span>
-                <span>{job.postedDate}</span>
-             </div>
-
-             <div className="flex flex-wrap items-center gap-2 mb-6">
-                {analysis?.score && (
-                     <span className={`px-3 py-1 rounded-full text-[12px] font-bold flex items-center gap-1 ${analysis.score > 70 ? 'bg-[#E6F4EA] dark:bg-[#1e3a29] text-[#137333] dark:text-[#45D469]' : 'bg-[#F5F5F7] dark:bg-[#2C2C2E] text-[#5F6368] dark:text-[#98989D]'}`}>
-                        <TrendingUp size={12} /> {analysis.score}% Match
-                     </span>
+             {/* Score Visual or Selection Checkbox */}
+             <div className="shrink-0">
+                {isSelectMode ? (
+                     <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${isSelected ? 'bg-apple-blue border-apple-blue text-white' : 'border-gray-300 dark:border-gray-600 bg-transparent'}`}>
+                        {isSelected && <CheckCircle2 size={14} />}
+                     </div>
+                ) : (
+                    <ScoreRing score={score} />
                 )}
-                {job.seniorityScore && (
-                     <span className="px-3 py-1 bg-[#F5F5F7] dark:bg-[#2C2C2E] text-[#1d1d1f] dark:text-[#f5f5f7] rounded-full text-[12px] font-semibold">{job.seniorityScore}</span>
-                )}
-             </div>
-
-             <p className="text-[14px] leading-relaxed text-[#424245] dark:text-[#B0B0B5] line-clamp-2 mb-6">
-                {analysis?.verdict || job.summary}
-             </p>
-             
-             <div className="flex items-center gap-4">
-                 <button 
-                    onClick={(e) => { e.stopPropagation(); onOpenDetail(job, 'strategy'); }}
-                    className="flex items-center gap-2 text-[14px] font-semibold text-[#0071e3] dark:text-[#0A84FF] hover:underline"
-                 >
-                    Apply Strategy <ArrowRight size={16} />
-                 </button>
-                 <a 
-                    href={applyUrl} 
-                    target="_blank" 
-                    rel="noreferrer" 
-                    onClick={(e) => e.stopPropagation()}
-                    className="flex items-center gap-1 text-[13px] font-medium text-[#86868b] dark:text-[#98989D] hover:text-[#1d1d1f] dark:hover:text-white transition-colors"
-                 >
-                    View Source <ExternalLink size={14} />
-                 </a>
              </div>
           </div>
+
+          <div className="flex flex-wrap items-center gap-2 mb-4">
+            {job.seniorityScore && (
+                 <span className="px-2.5 py-1 bg-gray-100 dark:bg-white/5 rounded-md text-[11px] font-semibold text-apple-gray dark:text-gray-300 flex items-center gap-1.5 border border-transparent dark:border-white/5">
+                    <div className="w-1.5 h-1.5 rounded-full shadow-sm" style={{ backgroundColor: job.seniorityScore === 'Senior' || job.seniorityScore === 'Lead' ? '#34C759' : '#FFCC00' }}></div>
+                    {job.seniorityScore}
+                 </span>
+            )}
+            {analysis?.isHighValue && <span className="bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 text-[10px] font-bold px-2.5 py-1 rounded-md flex items-center gap-1 border border-emerald-100 dark:border-emerald-500/20"><Zap size={10} fill="currentColor"/> HIGH VALUE</span>}
+            {status === 'applied' && <FollowUpTimer appliedDate={job.appliedDate} />}
+          </div>
+
+          <div className="mt-auto">
+             <p className="text-[13px] text-gray-600 dark:text-gray-400 line-clamp-2 leading-relaxed opacity-90">{analysis?.verdict || job.summary}</p>
+          </div>
+      </div>
+
+      {/* Floating Actions - Only visible on hover/focus */}
+      <div className="absolute top-4 right-4 flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-all duration-200 translate-x-2 group-hover:translate-x-0 z-10">
+         {!isSelectMode && status !== 'archived' && (
+            <button 
+                onClick={(e) => { e.stopPropagation(); onToggleStatus(job.id, status); }} 
+                className={`w-8 h-8 flex items-center justify-center rounded-full shadow-lg border border-black/5 dark:border-white/10 transition-transform hover:scale-110 ${isSavedOrBetter ? 'bg-apple-blue text-white border-transparent' : 'bg-white dark:bg-[#2C2C2E] text-apple-gray'}`}
+                title={isSavedOrBetter ? "Unsave" : "Save Job"}
+            >
+                <Bookmark size={14} fill={isSavedOrBetter ? "currentColor" : "none"} />
+            </button>
+         )}
+         {!isSelectMode && (
+             <button 
+                onClick={(e) => { e.stopPropagation(); onDelete(job.id); }} 
+                className="w-8 h-8 flex items-center justify-center rounded-full bg-white dark:bg-[#2C2C2E] border border-black/5 dark:border-white/10 shadow-lg text-apple-gray hover:bg-red-50 hover:text-red-500 hover:border-red-200 transition-all hover:scale-110"
+                title="Archive/Delete"
+             >
+                {status === 'archived' ? <Trash2 size={14} /> : <Archive size={14} />}
+             </button>
+         )}
       </div>
     </div>
   );
