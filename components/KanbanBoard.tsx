@@ -26,7 +26,6 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ jobs, onGenerateKit, onToggle
   const handleDragStart = (e: React.DragEvent, id: string) => {
       setDraggedJobId(id);
       e.dataTransfer.effectAllowed = "move";
-      // Transparent drag image hack
       const img = new Image();
       img.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
       e.dataTransfer.setDragImage(img, 0, 0);
@@ -47,10 +46,6 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ jobs, onGenerateKit, onToggle
 
   return (
     <div className="flex gap-6 overflow-x-auto w-full pb-8 items-start h-full scrollbar-hide px-6">
-      
-      {/* Centering spacer for large screens if needed, otherwise padding handles it */}
-      <div className="shrink-0 w-[calc(50vw-600px)] hidden min-[1200px]:block"></div>
-
       {columns.map(col => {
             const colJobs = jobs.filter(j => j.status === col.id);
             return (
@@ -99,8 +94,6 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ jobs, onGenerateKit, onToggle
                 </div>
             );
       })}
-      
-      {/* Trailing padding */}
       <div className="shrink-0 w-6"></div>
     </div>
   );
