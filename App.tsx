@@ -9,7 +9,8 @@ import KanbanBoard from './components/KanbanBoard';
 import CVEditor from './components/CVEditor';
 import JobDetailModal from './components/JobDetailModal';
 import AddLinkModal from './components/AddLinkModal';
-import { Layers, Moon, Sun, LogOut, Settings, X, Archive, Trash2, Plus, Search, ArrowDownUp, Sparkles, Radar, Filter, MapPin, Zap, Monitor, Briefcase, FileText, Home } from 'lucide-react';
+import AppointmentsView from './components/AppointmentsView';
+import { Layers, Moon, Sun, LogOut, Settings, X, Archive, Trash2, Plus, Search, ArrowDownUp, Sparkles, Radar, Filter, MapPin, Zap, Monitor, Briefcase, FileText, Home, Calendar } from 'lucide-react';
 
 const App: React.FC = () => {
   // Navigation & Data
@@ -23,6 +24,9 @@ const App: React.FC = () => {
   const [searchLocation, setSearchLocation] = useState('United Kingdom');
   const [isSearchSettingsOpen, setIsSearchSettingsOpen] = useState(false);
   const searchSettingsRef = useRef<HTMLDivElement>(null);
+
+  // Pipeline Search
+  const [pipelineSearch, setPipelineSearch] = useState('');
 
   // Filter Configuration (Dropdowns)
   const [isLocationOpen, setIsLocationOpen] = useState(false);
@@ -77,6 +81,11 @@ const App: React.FC = () => {
           localStorage.setItem('theme', 'light');
       }
   }, [darkMode]);
+
+  // Reset pipeline search when switching views
+  useEffect(() => {
+      setPipelineSearch('');
+  }, [currentView]);
 
   // Click Outside Profile/Search/Location Menu
   useEffect(() => {
@@ -325,25 +334,34 @@ const App: React.FC = () => {
       return allJobs.find(j => j.id === targetJobId) || null;
   }, [targetJobId, allJobs]);
 
-  const isFixedLayout = currentView === ViewState.KANBAN || currentView === ViewState.CV_EDITOR;
+  const pipelineJobs = useMemo(() => {
+      if (!pipelineSearch.trim()) return allJobs;
+      const lowerQ = pipelineSearch.toLowerCase();
+      return allJobs.filter(j => 
+          (j.title || '').toLowerCase().includes(lowerQ) || 
+          (j.company || '').toLowerCase().includes(lowerQ)
+      );
+  }, [allJobs, pipelineSearch]);
+
+  const isFixedLayout = currentView === ViewState.KANBAN || currentView === ViewState.CV_EDITOR || currentView === ViewState.APPOINTMENTS;
 
   return (
     <div className={`bg-[#F5F5F7] dark:bg-black font-sans transition-colors duration-300 ${isFixedLayout ? 'h-screen overflow-hidden flex flex-col' : 'min-h-screen pb-24 overflow-x-hidden'}`}>
         
         {/* SCOUTING DRONE OVERLAY */}
         {scoutState !== 'idle' && (
-            <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-md">
-                <div className="w-[480px] bg-[#1C1C1E] border border-white/10 rounded-2xl overflow-hidden shadow-2xl flex flex-col relative ring-1 ring-white/10">
+            <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-md px-4">
+                <div className="w-full max-w-[480px] bg-[#1C1C1E] border border-white/10 rounded-2xl overflow-hidden shadow-2xl flex flex-col relative ring-1 ring-white/10">
                     <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-[#0071e3] to-transparent animate-shimmer"></div>
-                    <div className="p-8">
+                    <div className="p-6 sm:p-8">
                         <div className="flex items-center gap-4 mb-6">
                             <div className="relative">
-                                <Radar className="text-[#0071e3] animate-spin-slow" size={40} />
+                                <Radar className="text-[#0071e3] animate-spin-slow" size={32} />
                                 <div className="absolute inset-0 bg-[#0071e3]/30 rounded-full blur-xl animate-pulse"></div>
                             </div>
                             <div>
-                                <h3 className="text-white font-bold text-xl tracking-tight">Scout Drone Active</h3>
-                                <p className="text-gray-400 text-xs font-mono uppercase tracking-widest mt-1">Sector: {searchLocation}</p>
+                                <h3 className="text-white font-bold text-lg sm:text-xl tracking-tight">Scout Drone Active</h3>
+                                <p className="text-gray-400 text-[10px] sm:text-xs font-mono uppercase tracking-widest mt-1">Sector: {searchLocation}</p>
                             </div>
                         </div>
                         <div className="h-40 font-mono text-xs text-[#00ff00] bg-black rounded-xl p-4 overflow-hidden flex flex-col justify-end shadow-inner mb-6 border border-white/10">
@@ -357,9 +375,9 @@ const App: React.FC = () => {
                         <div className="flex items-center justify-between text-gray-500 text-[10px] uppercase tracking-[0.2em]">
                              <span className="flex items-center gap-2">
                                 <span className={`w-2 h-2 rounded-full ${scoutState === 'analyzing' ? 'bg-yellow-500 animate-pulse' : 'bg-[#0071e3]'}`}></span>
-                                {scoutState} Protocol
+                                {scoutState}
                              </span>
-                             <span>SECURE CONN</span>
+                             <span>SECURE</span>
                         </div>
                     </div>
                 </div>
@@ -367,18 +385,19 @@ const App: React.FC = () => {
         )}
 
         <nav className="fixed top-0 left-0 right-0 h-16 bg-white/80 dark:bg-[#1c1c1e]/80 backdrop-blur-xl z-[40] border-b border-black/5 dark:border-white/5 transition-colors duration-300">
-            <div className="max-w-[1440px] mx-auto h-full flex items-center justify-between px-6">
+            <div className="max-w-[1440px] mx-auto h-full flex items-center justify-between px-4 sm:px-6">
                  <div className="flex items-center gap-8">
-                     <span className="font-bold text-lg tracking-tight text-[#1d1d1f] dark:text-white flex items-center gap-2"><Layers size={20} className="text-[#0071e3]" /> Career Studio</span>
+                     <span className="font-bold text-lg tracking-tight text-[#1d1d1f] dark:text-white flex items-center gap-2"><Layers size={20} className="text-[#0071e3]" /> <span className="hidden sm:inline">Career Studio</span></span>
                      <div className="hidden sm:flex items-center gap-1 bg-gray-100/50 dark:bg-white/5 p-1 rounded-lg">
                          <button onClick={() => { setCurrentView(ViewState.DASHBOARD); setTargetJobId(null); }} className={`px-4 py-1.5 rounded-md text-[13px] font-medium transition-all focus-visible:ring-2 focus-visible:ring-[#0071e3] focus:outline-none ${currentView === ViewState.DASHBOARD ? 'bg-white dark:bg-[#2C2C2E] text-black dark:text-white shadow-sm' : 'text-gray-600 dark:text-gray-400 hover:text-black dark:hover:text-white'}`}>Discover</button>
                          <button onClick={() => { setCurrentView(ViewState.KANBAN); setTargetJobId(null); }} className={`px-4 py-1.5 rounded-md text-[13px] font-medium transition-all focus-visible:ring-2 focus-visible:ring-[#0071e3] focus:outline-none ${currentView === ViewState.KANBAN ? 'bg-white dark:bg-[#2C2C2E] text-black dark:text-white shadow-sm' : 'text-gray-600 dark:text-gray-400 hover:text-black dark:hover:text-white'}`}>Pipeline</button>
                          <button onClick={() => setCurrentView(ViewState.CV_EDITOR)} className={`px-4 py-1.5 rounded-md text-[13px] font-medium transition-all focus-visible:ring-2 focus-visible:ring-[#0071e3] focus:outline-none ${currentView === ViewState.CV_EDITOR ? 'bg-white dark:bg-[#2C2C2E] text-black dark:text-white shadow-sm' : 'text-gray-600 dark:text-gray-400 hover:text-black dark:hover:text-white'}`}>Resume</button>
+                         <button onClick={() => setCurrentView(ViewState.APPOINTMENTS)} className={`px-4 py-1.5 rounded-md text-[13px] font-medium transition-all focus-visible:ring-2 focus-visible:ring-[#0071e3] focus:outline-none ${currentView === ViewState.APPOINTMENTS ? 'bg-white dark:bg-[#2C2C2E] text-black dark:text-white shadow-sm' : 'text-gray-600 dark:text-gray-400 hover:text-black dark:hover:text-white'}`}>Appointments</button>
                      </div>
                  </div>
                  <div className="flex items-center gap-4">
                      {analyzingCount > 0 && (
-                        <span className="flex items-center gap-2 text-[#0071e3] dark:text-[#0A84FF] font-medium text-[12px] bg-blue-50 dark:bg-blue-900/20 px-3 py-1 rounded-full"><Sparkles size={12} className="animate-spin" /> Analyzing Targets...</span>
+                        <span className="flex items-center gap-2 text-[#0071e3] dark:text-[#0A84FF] font-medium text-[10px] sm:text-[12px] bg-blue-50 dark:bg-blue-900/20 px-2 sm:px-3 py-1 rounded-full"><Sparkles size={12} className="animate-spin" /> <span className="hidden sm:inline">Analyzing Targets...</span></span>
                      )}
                      <div className="relative" ref={profileMenuRef}>
                         <button onClick={() => setIsProfileMenuOpen(!isProfileMenuOpen)} aria-label="Profile Menu" className="w-8 h-8 rounded-full bg-gradient-to-br from-[#0071e3] to-[#5856d6] text-white flex items-center justify-center text-[10px] font-bold shadow-md hover:scale-105 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#0071e3] ring-offset-white dark:ring-offset-black">VP</button>
@@ -408,17 +427,17 @@ const App: React.FC = () => {
             <div key={currentView} className={`view-enter ${isFixedLayout ? 'h-full flex flex-col' : ''}`}>
                 
                 {currentView === ViewState.DASHBOARD && (
-                    <div className="max-w-[1440px] mx-auto px-6">
+                    <div className="max-w-[1440px] mx-auto px-4 sm:px-6">
                         {/* HERO SECTION */}
                         <div className="grid grid-cols-1 md:grid-cols-12 gap-6 mb-8 items-stretch h-auto md:h-[280px]">
                             {/* Text Hero */}
                             <div className="md:col-span-8 flex flex-col justify-end pb-4 animate-fade-in-up relative z-40">
-                                <h1 className="text-[48px] md:text-[64px] leading-[1.05] font-bold text-[#1d1d1f] dark:text-white tracking-tighter mb-5 transition-colors">
+                                <h1 className="text-[32px] sm:text-[48px] md:text-[64px] leading-[1.05] font-bold text-[#1d1d1f] dark:text-white tracking-tighter mb-5 transition-colors">
                                     Navigate your <br/><span className="text-gray-500 dark:text-gray-400">next breakthrough.</span>
                                 </h1>
                                 <div className="flex flex-wrap items-center gap-4">
                                      <div className="relative z-50" ref={searchSettingsRef}>
-                                        <button onClick={() => setIsSearchSettingsOpen(!isSearchSettingsOpen)} aria-label="Search Settings" className="h-12 px-5 rounded-full bg-white dark:bg-[#1C1C1E] border border-black/5 dark:border-white/10 hover:border-black/20 dark:hover:border-white/20 text-[#1d1d1f] dark:text-white transition-all hover:scale-105 active:scale-95 shadow-sm flex items-center gap-2 text-sm font-bold focus-visible:ring-2 focus-visible:ring-[#0071e3] focus:outline-none"><Settings size={18} /> Scout Config</button>
+                                        <button onClick={() => setIsSearchSettingsOpen(!isSearchSettingsOpen)} aria-label="Search Settings" className="h-10 sm:h-12 px-4 sm:px-5 rounded-full bg-white dark:bg-[#1C1C1E] border border-black/5 dark:border-white/10 hover:border-black/20 dark:hover:border-white/20 text-[#1d1d1f] dark:text-white transition-all hover:scale-105 active:scale-95 shadow-sm flex items-center gap-2 text-xs sm:text-sm font-bold focus-visible:ring-2 focus-visible:ring-[#0071e3] focus:outline-none"><Settings size={16} /> Config</button>
                                         {isSearchSettingsOpen && (
                                             <div className="absolute top-full left-0 mt-3 w-80 bg-white dark:bg-[#1C1C1E] rounded-3xl shadow-2xl border border-black/5 dark:border-white/10 p-6 z-[60] animate-in fade-in zoom-in-95 duration-200">
                                                 <div className="flex items-center justify-between mb-6"><h4 className="text-xs font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400">Search Parameters</h4><button onClick={() => setIsSearchSettingsOpen(false)} aria-label="Close Settings" className="p-1 hover:bg-gray-100 dark:hover:bg-white/10 rounded-full transition-colors"><X size={16} /></button></div>
@@ -429,8 +448,8 @@ const App: React.FC = () => {
                                             </div>
                                         )}
                                      </div>
-                                     <button onClick={fetchJobs} disabled={scoutState !== 'idle'} className={`h-12 px-8 rounded-full bg-[#1d1d1f] dark:bg-white hover:bg-black dark:hover:bg-[#E5E5EA] text-white dark:text-black text-[15px] font-bold transition-all flex items-center gap-2.5 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#1d1d1f] focus:outline-none ${scoutState !== 'idle' ? 'opacity-70 cursor-not-allowed' : 'hover:scale-105 active:scale-95 shadow-xl shadow-black/10 dark:shadow-white/5'}`}><Search size={18} /> {scoutState !== 'idle' ? 'Scouting...' : 'Run Scout'}</button>
-                                     <button onClick={() => setIsAddLinkOpen(true)} aria-label="Add Job" className="h-12 w-12 flex items-center justify-center rounded-full bg-white dark:bg-[#1C1C1E] border border-black/5 dark:border-white/10 hover:border-black/20 dark:hover:border-white/20 text-[#1d1d1f] dark:text-white transition-all hover:scale-105 active:scale-95 shadow-sm focus-visible:ring-2 focus-visible:ring-[#0071e3] focus:outline-none"><Plus size={20} /></button>
+                                     <button onClick={fetchJobs} disabled={scoutState !== 'idle'} className={`h-10 sm:h-12 px-6 sm:px-8 rounded-full bg-[#1d1d1f] dark:bg-white hover:bg-black dark:hover:bg-[#E5E5EA] text-white dark:text-black text-xs sm:text-[15px] font-bold transition-all flex items-center gap-2.5 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#1d1d1f] focus:outline-none ${scoutState !== 'idle' ? 'opacity-70 cursor-not-allowed' : 'hover:scale-105 active:scale-95 shadow-xl shadow-black/10 dark:shadow-white/5'}`}><Search size={16} /> {scoutState !== 'idle' ? 'Scouting...' : 'Run Scout'}</button>
+                                     <button onClick={() => setIsAddLinkOpen(true)} aria-label="Add Job" className="h-10 w-10 sm:h-12 sm:w-12 flex items-center justify-center rounded-full bg-white dark:bg-[#1C1C1E] border border-black/5 dark:border-white/10 hover:border-black/20 dark:hover:border-white/20 text-[#1d1d1f] dark:text-white transition-all hover:scale-105 active:scale-95 shadow-sm focus-visible:ring-2 focus-visible:ring-[#0071e3] focus:outline-none"><Plus size={20} /></button>
                                 </div>
                             </div>
                             {/* Stats Widget */}
@@ -440,12 +459,12 @@ const App: React.FC = () => {
                         </div>
 
                         {/* CONTROL DECK */}
-                        <div className="sticky top-[64px] z-30 -mx-6 px-6 py-5 bg-[#F5F5F7]/95 dark:bg-black/90 backdrop-blur-xl border-y border-black/5 dark:border-white/10 flex items-center justify-between gap-4 mb-8 shadow-sm transition-colors">
+                        <div className="sticky top-[64px] z-30 -mx-4 sm:-mx-6 px-4 sm:px-6 py-4 sm:py-5 bg-[#F5F5F7]/95 dark:bg-black/90 backdrop-blur-xl border-y border-black/5 dark:border-white/10 flex items-center justify-between gap-4 mb-8 shadow-sm transition-colors overflow-x-auto no-scrollbar">
                             <div className="flex items-center gap-3 shrink-0">
                                 {/* Tab Switcher */}
                                 <div className="flex p-1 bg-gray-200/50 dark:bg-white/10 rounded-lg mr-2">
                                     {['new', 'saved', 'archived'].map((tab) => (
-                                        <button key={tab} onClick={() => { setActiveTab(tab as any); setIsSelectMode(false); setSelectedJobIds(new Set()); }} className={`px-4 py-1.5 rounded-md text-[13px] font-bold capitalize transition-all focus-visible:ring-2 focus-visible:ring-[#0071e3] focus:outline-none ${activeTab === tab ? 'bg-white dark:bg-[#1C1C1E] text-black dark:text-white shadow-sm' : 'text-gray-600 dark:text-gray-400 hover:text-black dark:hover:text-white'}`}>
+                                        <button key={tab} onClick={() => { setActiveTab(tab as any); setIsSelectMode(false); setSelectedJobIds(new Set()); }} className={`px-3 sm:px-4 py-1.5 rounded-md text-[11px] sm:text-[13px] font-bold capitalize transition-all focus-visible:ring-2 focus-visible:ring-[#0071e3] focus:outline-none ${activeTab === tab ? 'bg-white dark:bg-[#1C1C1E] text-black dark:text-white shadow-sm' : 'text-gray-600 dark:text-gray-400 hover:text-black dark:hover:text-white'}`}>
                                             {tab}
                                         </button>
                                     ))}
@@ -453,8 +472,8 @@ const App: React.FC = () => {
                                 <div className="w-px h-6 bg-gray-300 dark:bg-white/10 mx-1"></div>
                                 {/* Location Dropdown */}
                                 <div className="relative z-50" ref={locationMenuRef}>
-                                     <button onClick={() => setIsLocationOpen(!isLocationOpen)} className={`flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-bold border transition-all focus-visible:ring-2 focus-visible:ring-[#0071e3] focus:outline-none ${cityFilter !== 'All' ? 'bg-[#0071e3] text-white border-transparent' : 'bg-white dark:bg-[#1C1C1E] border-black/5 dark:border-white/10 text-[#1d1d1f] dark:text-white hover:border-black/20'}`}>
-                                        <MapPin size={12} /> {cityFilter === 'All' ? 'All Locations' : cityFilter}
+                                     <button onClick={() => setIsLocationOpen(!isLocationOpen)} className={`flex items-center gap-1.5 px-3 sm:px-4 py-1.5 rounded-full text-xs font-bold border transition-all focus-visible:ring-2 focus-visible:ring-[#0071e3] focus:outline-none ${cityFilter !== 'All' ? 'bg-[#0071e3] text-white border-transparent' : 'bg-white dark:bg-[#1C1C1E] border-black/5 dark:border-white/10 text-[#1d1d1f] dark:text-white hover:border-black/20'}`}>
+                                        <MapPin size={12} /> {cityFilter === 'All' ? 'All' : cityFilter}
                                      </button>
                                      {isLocationOpen && (
                                          <div className="absolute top-full left-0 mt-2 w-48 bg-white dark:bg-[#1C1C1E] rounded-xl shadow-xl border border-black/5 dark:border-white/10 p-1 animate-in fade-in zoom-in-95 duration-100 origin-top-left z-[60]">
@@ -473,7 +492,7 @@ const App: React.FC = () => {
                             </div>
 
                             {/* Scrolling Pills */}
-                            <div className="flex-1 overflow-x-auto no-scrollbar mask-linear-fade px-2">
+                            <div className="flex-1 overflow-x-auto no-scrollbar mask-linear-fade px-2 hidden sm:block">
                                 <div className="flex items-center gap-2">
                                     <button onClick={() => setSpecialFilter(specialFilter === 'high_value' ? 'none' : 'high_value')} className={`shrink-0 flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-bold border transition-all focus-visible:ring-2 focus-visible:ring-[#0071e3] focus:outline-none ${specialFilter === 'high_value' ? 'bg-[#1d1d1f] dark:bg-white text-white dark:text-black border-transparent' : 'bg-white dark:bg-[#1C1C1E] border-black/5 dark:border-white/10 text-[#1d1d1f] dark:text-white hover:border-black/20'}`}>
                                         <Zap size={12} className={specialFilter === 'high_value' ? 'fill-current' : ''} /> High Value
@@ -486,12 +505,12 @@ const App: React.FC = () => {
 
                             <div className="flex items-center gap-3 shrink-0">
                                 {jobsInCurrentTab.length > 0 && (
-                                    <button onClick={() => { setIsSelectMode(!isSelectMode); setSelectedJobIds(new Set()); }} className={`text-[11px] font-bold px-4 py-1.5 rounded-full transition-colors focus-visible:ring-2 focus-visible:ring-[#0071e3] focus:outline-none ${isSelectMode ? 'bg-[#0071e3] text-white' : 'bg-transparent text-[#0071e3] hover:bg-blue-50 dark:hover:bg-blue-900/20'}`}>
-                                        {isSelectMode ? 'Done Selecting' : 'Select Jobs'}
+                                    <button onClick={() => { setIsSelectMode(!isSelectMode); setSelectedJobIds(new Set()); }} className={`text-[11px] font-bold px-3 sm:px-4 py-1.5 rounded-full transition-colors focus-visible:ring-2 focus-visible:ring-[#0071e3] focus:outline-none ${isSelectMode ? 'bg-[#0071e3] text-white' : 'bg-transparent text-[#0071e3] hover:bg-blue-50 dark:hover:bg-blue-900/20'}`}>
+                                        {isSelectMode ? 'Done' : 'Select'}
                                     </button>
                                 )}
-                                <div className="w-px h-6 bg-gray-300 dark:bg-white/10"></div>
-                                <button onClick={() => setSortBy(sortBy === 'date' ? 'score' : 'date')} className="text-[11px] font-bold text-gray-500 hover:text-[#0071e3] flex items-center gap-1.5 transition-colors focus-visible:ring-2 focus-visible:ring-[#0071e3] focus:outline-none">
+                                <div className="w-px h-6 bg-gray-300 dark:bg-white/10 hidden sm:block"></div>
+                                <button onClick={() => setSortBy(sortBy === 'date' ? 'score' : 'date')} className="hidden sm:flex text-[11px] font-bold text-gray-500 hover:text-[#0071e3] items-center gap-1.5 transition-colors focus-visible:ring-2 focus-visible:ring-[#0071e3] focus:outline-none">
                                     <ArrowDownUp size={14}/> {sortBy === 'date' ? 'Newest' : 'Top Score'}
                                 </button>
                                 <button onClick={() => {setSpecialFilter('none'); setCityFilter('All'); setIndustryFilter(null); setSortBy('date');}} className="p-2 hover:bg-gray-100 dark:hover:bg-white/10 rounded-full transition-colors text-gray-500 focus-visible:ring-2 focus-visible:ring-[#0071e3] focus:outline-none" aria-label="Clear Filters" title="Clear Filters">
@@ -512,7 +531,7 @@ const App: React.FC = () => {
                         )}
 
                         {/* GRID */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 auto-rows-fr">
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 auto-rows-fr pb-8">
                             {filteredJobs.length === 0 ? (
                                 <div className="col-span-full py-32 text-center">
                                     <div className="w-16 h-16 bg-gray-100 dark:bg-[#1C1C1E] rounded-full flex items-center justify-center mx-auto mb-4 text-gray-300 dark:text-gray-600"><Search size={24}/></div>
@@ -540,19 +559,38 @@ const App: React.FC = () => {
                 {currentView === ViewState.KANBAN && (
                     <div className="h-full flex flex-col w-full">
                         {/* PIPELINE COMMAND DECK */}
-                        <div className="px-6 py-4 bg-[#F5F5F7]/95 dark:bg-black/90 backdrop-blur-xl border-y border-black/5 dark:border-white/10 flex items-center justify-between gap-4 mb-2 shadow-sm transition-colors flex-none z-30">
+                        <div className="px-4 sm:px-6 py-4 bg-[#F5F5F7]/95 dark:bg-black/90 backdrop-blur-xl border-y border-black/5 dark:border-white/10 flex items-center justify-between gap-4 mb-2 shadow-sm transition-colors flex-none z-30">
                             <div className="flex items-center gap-4">
-                                <h1 className="text-2xl font-bold tracking-tight text-[#1d1d1f] dark:text-white">Pipeline</h1>
-                                <div className="h-6 w-px bg-gray-300 dark:bg-white/10"></div>
-                                <span className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">{allJobs.filter(j => j.status !== 'archived' && j.status !== 'new').length} Active Opportunities</span>
+                                <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-[#1d1d1f] dark:text-white">Pipeline</h1>
+                                <div className="h-6 w-px bg-gray-300 dark:bg-white/10 hidden sm:block"></div>
+                                <span className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider hidden sm:block">{allJobs.filter(j => j.status !== 'archived' && j.status !== 'new').length} Active Opportunities</span>
                             </div>
-                            <button onClick={() => setIsAddLinkOpen(true)} className="flex items-center gap-2 px-5 py-2 rounded-full bg-[#1d1d1f] dark:bg-white text-white dark:text-black text-xs font-bold hover:scale-105 transition-transform shadow-lg shadow-black/5 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#1d1d1f] focus:outline-none">
-                                <Plus size={14} /> Add Opportunity
-                            </button>
+                            
+                            <div className="flex items-center gap-2">
+                                <div className="relative group block">
+                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-[#0071e3] transition-colors" size={14} />
+                                    <input 
+                                        type="text" 
+                                        placeholder="Search..." 
+                                        value={pipelineSearch}
+                                        onChange={(e) => setPipelineSearch(e.target.value)}
+                                        className="pl-9 pr-8 py-2 bg-white dark:bg-[#1C1C1E] border border-black/5 dark:border-white/10 rounded-full text-xs font-medium outline-none focus:ring-2 focus:ring-[#0071e3] transition-all w-32 sm:w-48 focus:w-48 sm:focus:w-64 text-[#1d1d1f] dark:text-white"
+                                    />
+                                    {pipelineSearch && (
+                                        <button onClick={() => setPipelineSearch('')} className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 rounded-full hover:bg-gray-100 dark:hover:bg-white/10 text-gray-400">
+                                            <X size={12} />
+                                        </button>
+                                    )}
+                                </div>
+                                
+                                <button onClick={() => setIsAddLinkOpen(true)} className="flex items-center gap-2 px-4 sm:px-5 py-2 rounded-full bg-[#1d1d1f] dark:bg-white text-white dark:text-black text-xs font-bold hover:scale-105 transition-transform shadow-lg shadow-black/5 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#1d1d1f] focus:outline-none">
+                                    <Plus size={14} /> <span className="hidden sm:inline">Add Opportunity</span><span className="sm:hidden">Add</span>
+                                </button>
+                            </div>
                         </div>
 
                         <div className="flex-1 min-h-0 w-full pt-2">
-                            <KanbanBoard jobs={allJobs} onGenerateKit={(job) => handleOpenDetail(job, 'strategy')} onToggleStatus={updateJobStatus} onDelete={handleDelete} onOpenDetail={handleOpenDetail} onOpenAddModal={() => setIsAddLinkOpen(true)}/>
+                            <KanbanBoard jobs={pipelineJobs} onGenerateKit={(job) => handleOpenDetail(job, 'strategy')} onToggleStatus={updateJobStatus} onDelete={handleDelete} onOpenDetail={handleOpenDetail} onOpenAddModal={() => setIsAddLinkOpen(true)}/>
                         </div>
                     </div>
                 )}
@@ -560,13 +598,13 @@ const App: React.FC = () => {
                 {currentView === ViewState.CV_EDITOR && (
                     <div className="h-full flex flex-col items-center w-full">
                         {/* RESUME STUDIO COMMAND DECK */}
-                        <div className="w-full px-6 py-4 bg-[#F5F5F7]/95 dark:bg-black/90 backdrop-blur-xl border-y border-black/5 dark:border-white/10 flex items-center justify-between gap-4 mb-6 shadow-sm transition-colors flex-none z-30">
+                        <div className="w-full px-4 sm:px-6 py-4 bg-[#F5F5F7]/95 dark:bg-black/90 backdrop-blur-xl border-y border-black/5 dark:border-white/10 flex items-center justify-between gap-4 mb-2 sm:mb-6 shadow-sm transition-colors flex-none z-30">
                             <div className="flex items-center gap-4">
-                                <h1 className="text-2xl font-bold tracking-tight text-[#1d1d1f] dark:text-white">Resume Studio</h1>
+                                <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-[#1d1d1f] dark:text-white">Resume Studio</h1>
                                 {targetJobForEditor && (
                                      <>
-                                        <div className="h-6 w-px bg-gray-300 dark:bg-white/10"></div>
-                                        <div className="flex items-center gap-2 px-3 py-1 bg-blue-50 dark:bg-blue-900/20 rounded-full text-[#0071e3] text-xs font-bold border border-blue-100 dark:border-blue-500/20">
+                                        <div className="h-6 w-px bg-gray-300 dark:bg-white/10 hidden sm:block"></div>
+                                        <div className="hidden sm:flex items-center gap-2 px-3 py-1 bg-blue-50 dark:bg-blue-900/20 rounded-full text-[#0071e3] text-xs font-bold border border-blue-100 dark:border-blue-500/20">
                                             <Briefcase size={12} /> Target: {targetJobForEditor.company}
                                         </div>
                                      </>
@@ -582,31 +620,42 @@ const App: React.FC = () => {
                         </div>
                     </div>
                 )}
+
+                {currentView === ViewState.APPOINTMENTS && (
+                    <AppointmentsView jobs={allJobs} onOpenDetail={handleOpenDetail} />
+                )}
             </div>
         </main>
 
         {/* MOBILE NAVIGATION BAR */}
-        <nav className="fixed bottom-0 left-0 right-0 h-16 bg-white/80 dark:bg-[#1c1c1e]/80 backdrop-blur-xl z-[45] border-t border-black/5 dark:border-white/5 sm:hidden flex items-center justify-around px-4 transition-colors duration-300">
+        <nav className="fixed bottom-0 left-0 right-0 h-16 bg-white/80 dark:bg-[#1c1c1e]/80 backdrop-blur-xl z-[45] border-t border-black/5 dark:border-white/5 sm:hidden flex items-center justify-around px-4 transition-colors duration-300 pb-safe">
              <button 
                 onClick={() => { setCurrentView(ViewState.DASHBOARD); setTargetJobId(null); }} 
-                className={`flex flex-col items-center gap-1 transition-all ${currentView === ViewState.DASHBOARD ? 'text-[#0071e3] scale-110' : 'text-gray-400'}`}
+                className={`flex flex-col items-center gap-1 transition-all p-2 rounded-xl ${currentView === ViewState.DASHBOARD ? 'text-[#0071e3] bg-blue-50/50 dark:bg-blue-900/10' : 'text-gray-400'}`}
              >
-                <Home size={22} />
+                <Home size={20} />
                 <span className="text-[10px] font-bold">Discover</span>
              </button>
              <button 
                 onClick={() => { setCurrentView(ViewState.KANBAN); setTargetJobId(null); }} 
-                className={`flex flex-col items-center gap-1 transition-all ${currentView === ViewState.KANBAN ? 'text-[#0071e3] scale-110' : 'text-gray-400'}`}
+                className={`flex flex-col items-center gap-1 transition-all p-2 rounded-xl ${currentView === ViewState.KANBAN ? 'text-[#0071e3] bg-blue-50/50 dark:bg-blue-900/10' : 'text-gray-400'}`}
              >
-                <Briefcase size={22} />
+                <Briefcase size={20} />
                 <span className="text-[10px] font-bold">Pipeline</span>
              </button>
              <button 
                 onClick={() => setCurrentView(ViewState.CV_EDITOR)} 
-                className={`flex flex-col items-center gap-1 transition-all ${currentView === ViewState.CV_EDITOR ? 'text-[#0071e3] scale-110' : 'text-gray-400'}`}
+                className={`flex flex-col items-center gap-1 transition-all p-2 rounded-xl ${currentView === ViewState.CV_EDITOR ? 'text-[#0071e3] bg-blue-50/50 dark:bg-blue-900/10' : 'text-gray-400'}`}
              >
-                <FileText size={22} />
+                <FileText size={20} />
                 <span className="text-[10px] font-bold">Resume</span>
+             </button>
+             <button 
+                onClick={() => setCurrentView(ViewState.APPOINTMENTS)} 
+                className={`flex flex-col items-center gap-1 transition-all p-2 rounded-xl ${currentView === ViewState.APPOINTMENTS ? 'text-[#0071e3] bg-blue-50/50 dark:bg-blue-900/10' : 'text-gray-400'}`}
+             >
+                <Calendar size={20} />
+                <span className="text-[10px] font-bold">Plan</span>
              </button>
         </nav>
 

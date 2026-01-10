@@ -1,7 +1,6 @@
-
 import React from 'react';
 import { Job } from '../types';
-import { Briefcase, MapPin, Trash2, Bookmark, Archive, Zap, Users, Clock, Flame, CheckCircle2, MoreHorizontal } from 'lucide-react';
+import { Briefcase, MapPin, Trash2, Bookmark, Archive, Zap, Users, Clock, Flame, CheckCircle2, MoreHorizontal, Calendar } from 'lucide-react';
 
 interface JobCardProps {
   job: Job;
@@ -18,7 +17,7 @@ const FollowUpTimer = ({ appliedDate }: { appliedDate?: string }) => {
     if (!appliedDate) return null;
     const applied = new Date(appliedDate);
     const now = new Date();
-    const diffTime = now.getTime() - applied.getTime(); // Removed Math.abs to correctly calculate past time
+    const diffTime = now.getTime() - applied.getTime();
     const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24)); 
     const followUpDay = 7;
     const remaining = followUpDay - diffDays;
@@ -63,6 +62,9 @@ const JobCard: React.FC<JobCardProps> = ({ job, onOpenDetail, onToggleStatus, on
   const status = job.status || 'new';
   const isSavedOrBetter = ['saved', 'applied', 'assessment', 'interview', 'offer'].includes(status);
   const score = analysis?.score || 0;
+  
+  const interviewDate = job.interviewDate ? new Date(job.interviewDate) : null;
+  const interviewStr = interviewDate ? interviewDate.toLocaleDateString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
 
   // Kanban View: Compact, Information Dense
   if (isKanban) {
@@ -82,12 +84,17 @@ const JobCard: React.FC<JobCardProps> = ({ job, onOpenDetail, onToggleStatus, on
             
             <div className="flex flex-col gap-1">
                 <p className="text-[12px] text-apple-gray dark:text-gray-400 font-medium truncate">{job.company}</p>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                     {job.seniorityScore && (
                          <div className="flex items-center gap-1.5">
                             <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: job.seniorityScore === 'Senior' || job.seniorityScore === 'Lead' ? '#34C759' : '#FFCC00' }}></div>
                             <span className="text-[10px] text-apple-gray">{job.seniorityScore}</span>
                          </div>
+                    )}
+                    {interviewDate && (
+                         <span className="text-[10px] font-bold text-purple-600 bg-purple-50 dark:bg-purple-900/20 px-1.5 py-0.5 rounded flex items-center gap-1">
+                            <Calendar size={10} /> {interviewStr}
+                         </span>
                     )}
                 </div>
             </div>
@@ -144,6 +151,11 @@ const JobCard: React.FC<JobCardProps> = ({ job, onOpenDetail, onToggleStatus, on
                  </span>
             )}
             {analysis?.isHighValue && <span className="bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 text-[10px] font-bold px-2.5 py-1 rounded-md flex items-center gap-1 border border-emerald-100 dark:border-emerald-500/20"><Zap size={10} fill="currentColor"/> HIGH VALUE</span>}
+            {interviewDate && (
+                 <span className="bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-400 text-[10px] font-bold px-2.5 py-1 rounded-md flex items-center gap-1 border border-purple-100 dark:border-purple-500/20">
+                     <Calendar size={10} /> {interviewStr}
+                 </span>
+            )}
             {status === 'applied' && <FollowUpTimer appliedDate={job.appliedDate} />}
           </div>
 

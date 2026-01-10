@@ -17,6 +17,8 @@ export interface Job {
   source: string;
   status?: 'new' | 'saved' | 'applied' | 'assessment' | 'interview' | 'offer' | 'archived';
   notes?: string; // Can contain HTML
+  stageNotes?: string; // Specific notes for active stages
+  interviewDate?: number; // Timestamp
   attachments?: Attachment[];
   appliedDate?: string;
   postedDate?: string; // e.g., "2 days ago"
@@ -59,6 +61,7 @@ export enum ViewState {
   DASHBOARD = 'DASHBOARD',
   KANBAN = 'KANBAN',
   CV_EDITOR = 'CV_EDITOR',
+  APPOINTMENTS = 'APPOINTMENTS',
 }
 
 export interface SearchFilters {

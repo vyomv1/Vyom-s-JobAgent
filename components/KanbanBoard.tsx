@@ -45,13 +45,13 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ jobs, onGenerateKit, onToggle
   };
 
   return (
-    <div className="flex gap-6 overflow-x-auto w-full pb-8 items-start h-full scrollbar-hide px-6">
+    <div className="flex gap-4 sm:gap-6 overflow-x-auto w-full pb-8 items-start h-full scrollbar-hide px-4 sm:px-6 snap-x snap-mandatory">
       {columns.map(col => {
             const colJobs = jobs.filter(j => j.status === col.id);
             return (
                 <div 
                     key={col.id}
-                    className="flex flex-col min-w-[340px] max-w-[340px] h-full rounded-[24px] bg-[#f5f5f7]/60 dark:bg-[#1C1C1E]/60 border border-white/50 dark:border-white/5 backdrop-blur-xl transition-colors ring-1 ring-black/5"
+                    className="flex flex-col min-w-[300px] sm:min-w-[340px] max-w-[340px] h-full rounded-[24px] bg-[#f5f5f7]/60 dark:bg-[#1C1C1E]/60 border border-white/50 dark:border-white/5 backdrop-blur-xl transition-colors ring-1 ring-black/5 snap-center"
                     onDragOver={handleDragOver}
                     onDrop={(e) => handleDrop(e, col.id)}
                 >
@@ -94,7 +94,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ jobs, onGenerateKit, onToggle
                 </div>
             );
       })}
-      <div className="shrink-0 w-6"></div>
+      <div className="shrink-0 w-2 sm:w-6"></div>
     </div>
   );
 };
