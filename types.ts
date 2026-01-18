@@ -19,6 +19,7 @@ export interface Job {
   notes?: string; // Can contain HTML
   stageNotes?: string; // Specific notes for active stages
   interviewDate?: number; // Timestamp
+  interviewFormat?: 'video' | 'phone';
   attachments?: Attachment[];
   appliedDate?: string;
   postedDate?: string; // e.g., "2 days ago"

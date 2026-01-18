@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { X, ExternalLink, Briefcase, Zap, FileText, Sparkles, Edit2, Save, ChevronDown, RotateCw, TrendingUp, AlertTriangle, Loader2, Paperclip, Image as ImageIcon, Trash2, ChevronUp, Link as LinkIcon, Info, Check, Calendar, CalendarCheck } from 'lucide-react';
+import { X, ExternalLink, Briefcase, Zap, FileText, Sparkles, Edit2, Save, ChevronDown, RotateCw, TrendingUp, AlertTriangle, Loader2, Paperclip, Image as ImageIcon, Trash2, ChevronUp, Link as LinkIcon, Info, Check, Calendar, CalendarCheck, Video, Phone } from 'lucide-react';
 import { Job, Attachment } from '../types';
 
 interface JobDetailModalProps {
@@ -112,6 +112,10 @@ const JobDetailModal: React.FC<JobDetailModalProps> = ({ isOpen, onClose, job, o
       }
   };
 
+  const handleFormatChange = (format: 'video' | 'phone') => {
+    if (onUpdateJob) onUpdateJob({ ...job, interviewFormat: format });
+  };
+
   const getGoogleCalendarUrl = () => {
     if (!job.interviewDate) return '';
     const start = new Date(job.interviewDate);
@@ -119,7 +123,7 @@ const JobDetailModal: React.FC<JobDetailModalProps> = ({ isOpen, onClose, job, o
     const format = (d: Date) => d.toISOString().replace(/-|:|\.\d\d\d/g, "");
     
     const title = encodeURIComponent(`Interview: ${job.title} at ${job.company}`);
-    const details = encodeURIComponent(`Role: ${job.title}\nCompany: ${job.company}\n\nStage Notes:\n${job.stageNotes || ''}\n\nNotes:\n${job.notes || ''}`);
+    const details = encodeURIComponent(`Role: ${job.title}\nCompany: ${job.company}\nFormat: ${job.interviewFormat || 'Not specified'}\n\nStage Notes:\n${job.stageNotes || ''}\n\nNotes:\n${job.notes || ''}`);
     const location = encodeURIComponent(job.location);
     
     return `https://www.google.com/calendar/render?action=TEMPLATE&text=${title}&details=${details}&location=${location}&dates=${format(start)}/${format(end)}`;
@@ -196,6 +200,7 @@ const JobDetailModal: React.FC<JobDetailModalProps> = ({ isOpen, onClose, job, o
                       <select value={job.status || 'new'} onChange={handleStatusChange} className="w-full appearance-none bg-gray-50 dark:bg-black/20 px-4 py-3 rounded-xl font-bold text-sm text-apple-text dark:text-white cursor-pointer outline-none">
                           <option value="saved">Saved</option>
                           <option value="applied">Applied</option>
+                          <option value="assessment">Assessment</option>
                           <option value="interview">Interview</option>
                           <option value="offer">Offer</option>
                           <option value="archived">Archived</option>
@@ -229,6 +234,27 @@ const JobDetailModal: React.FC<JobDetailModalProps> = ({ isOpen, onClose, job, o
                    />
                    <Calendar className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" size={16} />
                </div>
+
+               {job.interviewDate && (
+                   <div className="space-y-2">
+                        <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400 block">Format</span>
+                        <div className="flex p-1 bg-gray-100 dark:bg-white/5 rounded-xl">
+                            <button 
+                                onClick={() => handleFormatChange('video')} 
+                                className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-bold transition-all ${job.interviewFormat === 'video' || (!job.interviewFormat && job.location.toLowerCase().includes('remote')) ? 'bg-white dark:bg-[#2C2C2E] text-apple-blue shadow-sm' : 'text-gray-500 hover:text-apple-text dark:hover:text-white'}`}
+                            >
+                                <Video size={14} /> Video
+                            </button>
+                            <button 
+                                onClick={() => handleFormatChange('phone')} 
+                                className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-bold transition-all ${job.interviewFormat === 'phone' ? 'bg-white dark:bg-[#2C2C2E] text-apple-blue shadow-sm' : 'text-gray-500 hover:text-apple-text dark:hover:text-white'}`}
+                            >
+                                <Phone size={14} /> Phone
+                            </button>
+                        </div>
+                   </div>
+               )}
+
                {job.interviewDate && (
                    <a 
                        href={getGoogleCalendarUrl()} 
