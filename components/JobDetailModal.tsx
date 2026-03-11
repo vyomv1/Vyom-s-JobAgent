@@ -97,8 +97,8 @@ const JobDetailModal: React.FC<JobDetailModalProps> = ({ isOpen, onClose, job, o
   const handleSavePostedDate = () => { if (onUpdateJob && editedPostedDate.trim() !== job.postedDate) onUpdateJob({ ...job, postedDate: editedPostedDate }); setIsEditingPostedDate(false); };
   
   const handleStatusChange = (e: React.ChangeEvent<HTMLSelectElement>) => { if (onUpdateJob) onUpdateJob({ ...job, status: e.target.value as Job['status'] }); };
-  const handleReAnalyzeClick = async () => { if (onReAnalyze) { setIsAnalyzing(true); await onReAnalyze(job); setIsAnalyzing(false); } };
-  const handleGenerateKitClick = async () => { setIsGeneratingKit(true); await onGenerateKit(job); setIsGeneratingKit(false); };
+  const handleReAnalyzeClick = async () => { if (onReAnalyze) { setIsAnalyzing(true); try { await onReAnalyze(job); } finally { setIsAnalyzing(false); } } };
+  const handleGenerateKitClick = async () => { setIsGeneratingKit(true); try { await onGenerateKit(job); } finally { setIsGeneratingKit(false); } };
   const handleNotesUpdate = () => { if (notesRef.current && onUpdateJob) { const newNotes = notesRef.current.innerHTML; if (newNotes !== job.notes) onUpdateJob({ ...job, notes: newNotes }); } };
   const handleStageNotesUpdate = (e: React.ChangeEvent<HTMLTextAreaElement>) => { if (onUpdateJob) onUpdateJob({ ...job, stageNotes: e.target.value }); };
   const handleNotesBlur = () => { setIsEditingNotes(false); handleNotesUpdate(); };
@@ -267,7 +267,7 @@ const JobDetailModal: React.FC<JobDetailModalProps> = ({ isOpen, onClose, job, o
                )}
           </div>
           
-          <div className="mt-auto pt-6 border-t border-gray-200 dark:border-white/5 md:block hidden">
+          <div className="md:block hidden mt-4">
               <a href={applyUrl} target="_blank" rel="noreferrer" className="flex items-center justify-center gap-2 w-full py-3 bg-apple-blue/10 text-apple-blue text-sm font-bold rounded-xl">
                   Visit Listing <ExternalLink size={14} />
               </a>
@@ -345,9 +345,18 @@ const JobDetailModal: React.FC<JobDetailModalProps> = ({ isOpen, onClose, job, o
                                     <p className="text-sm sm:text-xl text-apple-text dark:text-white font-medium leading-relaxed">{analysis.verdict}</p>
                                 </div>
                             ) : (
-                                 <div className="p-5 sm:p-6 bg-blue-50 dark:bg-blue-900/10 rounded-2xl border border-blue-100 dark:border-blue-800/30 flex items-center gap-3">
-                                    <Loader2 className="text-apple-blue animate-spin" size={18} />
-                                    <span className="text-xs sm:text-sm font-semibold text-apple-blue">Analyzing opportunity potential...</span>
+                                 <div className="p-5 sm:p-6 bg-blue-50 dark:bg-blue-900/10 rounded-2xl border border-blue-100 dark:border-blue-800/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                                    <div className="flex items-center gap-3">
+                                        {isAnalyzing ? <Loader2 className="text-apple-blue animate-spin" size={18} /> : <Sparkles className="text-apple-blue" size={18} />}
+                                        <span className="text-xs sm:text-sm font-semibold text-apple-blue">
+                                            {isAnalyzing ? 'Analyzing opportunity potential...' : 'Analysis pending or failed.'}
+                                        </span>
+                                    </div>
+                                    {!isAnalyzing && (
+                                        <button onClick={handleReAnalyzeClick} className="px-4 py-2 bg-apple-blue text-white text-xs font-bold rounded-lg hover:bg-blue-600 transition-colors">
+                                            Analyze Now
+                                        </button>
+                                    )}
                                  </div>
                             )}
                             

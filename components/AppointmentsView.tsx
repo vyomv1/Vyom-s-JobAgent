@@ -45,7 +45,7 @@ const AppointmentsView: React.FC<AppointmentsViewProps> = ({ jobs, onOpenDetail 
     return `https://www.google.com/calendar/render?action=TEMPLATE&text=${title}&details=${details}&location=${location}&dates=${format(start)}/${format(end)}`;
   };
 
-  const AppointmentCard = ({ job, isPast, key }: { job: Job, isPast: boolean, key?: string }) => {
+  const AppointmentCard = ({ job, isPast }: { job: Job, isPast: boolean }) => {
     const date = new Date(job.interviewDate!);
     const isToday = new Date().toDateString() === date.toDateString();
     
@@ -54,7 +54,7 @@ const AppointmentsView: React.FC<AppointmentsViewProps> = ({ jobs, onOpenDetail 
     const isVideo = job.interviewFormat === 'video' || (!job.interviewFormat && job.location.toLowerCase().includes('remote'));
 
     return (
-        <div key={key || job.id} className="relative pl-12 group">
+        <div className="relative pl-12 group">
             {/* Timeline Dot */}
             <div className={`absolute left-0 top-1.5 w-10 h-10 rounded-full border-4 border-[#F5F5F7] dark:border-black flex items-center justify-center z-10 shadow-sm ${isToday ? 'bg-apple-blue text-white' : isPast ? 'bg-gray-100 dark:bg-white/10 text-gray-400' : 'bg-white dark:bg-[#2C2C2E] text-apple-blue'}`}>
                 {isPast ? <History size={16} /> : <Calendar size={16} />}
@@ -126,17 +126,19 @@ const AppointmentsView: React.FC<AppointmentsViewProps> = ({ jobs, onOpenDetail 
       <div className="max-w-4xl mx-auto px-6 py-10">
           
           {/* Upcoming Section */}
-          {upcoming.length > 0 && (
-            <div className="mb-16">
-              <div className="flex items-center gap-4 mb-10">
-                  <h1 className="text-3xl font-bold text-[#1d1d1f] dark:text-white tracking-tight">Upcoming</h1>
-                  <div className="h-px flex-1 bg-gray-200 dark:bg-white/10"></div>
-              </div>
-              <div className="space-y-8 relative before:absolute before:left-[19px] before:top-4 before:bottom-4 before:w-0.5 before:bg-gray-200 dark:before:bg-white/10">
-                  {upcoming.map(job => <AppointmentCard key={job.id} job={job} isPast={false} />)}
-              </div>
+          <div className="mb-16">
+            <div className="flex items-center gap-4 mb-10">
+                <h1 className="text-3xl font-bold text-[#1d1d1f] dark:text-white tracking-tight">Upcoming</h1>
+                <div className="h-px flex-1 bg-gray-200 dark:bg-white/10"></div>
             </div>
-          )}
+            {upcoming.length > 0 ? (
+                <div className="space-y-8 relative before:absolute before:left-[19px] before:top-4 before:bottom-4 before:w-0.5 before:bg-gray-200 dark:before:bg-white/10">
+                    {upcoming.map(job => <AppointmentCard key={job.id} job={job} isPast={false} />)}
+                </div>
+            ) : (
+                <div className="text-gray-500 dark:text-gray-400 italic">No scheduled appointments</div>
+            )}
+          </div>
 
           {/* Past Section */}
           {past.length > 0 && (
