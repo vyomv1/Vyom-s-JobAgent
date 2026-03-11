@@ -1,7 +1,7 @@
 
 import { GoogleGenAI, Type, GenerateContentResponse } from "@google/genai";
 import { Job, JobAnalysis } from "../types";
-import { SYSTEM_INSTRUCTION } from "../constants";
+import { SYSTEM_INSTRUCTION, USER_PROFILE } from "../constants";
 
 const getClient = () => {
     // Guidelines: Use process.env.API_KEY directly and initialize via named parameter.
@@ -166,14 +166,30 @@ export const enrichJob = async (input: { url?: string; text?: string; title?: st
 
 export const analyzeJob = async (job: Job): Promise<JobAnalysis> => {
   const ai = getClient();
-  const safeSummary = (job.summary || "").substring(0, 5000);
+  const safeSummary = (job.summary || "").substring(0, 3000);
   const prompt = `
-    Analyze this job for the user based on the System Instructions. 
-    Job: ${job.title} at ${job.company}. Summary: ${safeSummary}
+    Analyze this job opportunity for ${USER_PROFILE.name}, a ${USER_PROFILE.currentRole} with ${USER_PROFILE.experienceYears} years of experience.
     
-    ### SCORING & STRATEGY
-    - **Score Reasoning**: Provide a bulleted list of why this score was given.
-    Return valid JSON matching JobAnalysis interface.
+    User Skills: ${USER_PROFILE.skills.join(", ")}
+    User Location: ${USER_PROFILE.location}
+    
+    Job Title: ${job.title}
+    Company: ${job.company}
+    Location: ${job.location}
+    Summary: ${safeSummary}
+    
+    Provide a strategic analysis in JSON format with the following fields:
+    - score: A number from 0 to 100 indicating how well this matches the user's profile and goals.
+    - scoreReasoning: A short bulleted list explaining the score (e.g., "+20 Fintech boost, -10 Commute risk").
+    - verdict: A concise 1-2 sentence strategic verdict on whether to pursue this role.
+    - strategy: A brief strategy on how to position the application (e.g., "Highlight Trove design system experience").
+    - isHighValue: Boolean, true if score > 75 and aligns with strategic goals.
+    - isCommuteRisk: Boolean, true if location is not Remote/Edinburgh/Glasgow.
+    - workPattern: Extracted work pattern (e.g., "Hybrid", "Remote", "On-site") or "Unknown".
+    - experienceRequired: Extracted experience required (e.g., "5+ years") or "Unknown".
+    - salary: Extracted salary information or "Not specified".
+    - industry: Extracted industry (e.g., "Fintech", "Public Sector") or "Unknown".
+    - matchedKeywords: Array of matching skills/keywords found in the summary.
   `;
 
   // Reasoning task, gemini-3-flash-preview is suitable here.
@@ -182,7 +198,7 @@ export const analyzeJob = async (job: Job): Promise<JobAnalysis> => {
     contents: prompt,
     config: {
       systemInstruction: SYSTEM_INSTRUCTION,
-      temperature: 0.0,
+      temperature: 0.1,
       responseMimeType: "application/json",
       responseSchema: {
         type: Type.OBJECT,
@@ -198,7 +214,8 @@ export const analyzeJob = async (job: Job): Promise<JobAnalysis> => {
           salary: { type: Type.STRING },
           industry: { type: Type.STRING },
           matchedKeywords: { type: Type.ARRAY, items: { type: Type.STRING } }
-        }
+        },
+        required: ["score", "scoreReasoning", "verdict", "strategy", "isHighValue", "isCommuteRisk", "workPattern", "experienceRequired", "salary", "industry", "matchedKeywords"]
       }
     }
   }));

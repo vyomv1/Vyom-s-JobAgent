@@ -24,6 +24,7 @@ export interface Job {
   appliedDate?: string;
   postedDate?: string; // e.g., "2 days ago"
   scoutedAt?: number; // Timestamp for auto-archiving
+  updatedAt?: number; // Timestamp for last modification
   seniorityScore?: 'Mid' | 'Senior' | 'Lead';
   isRelatedDiscovery?: boolean;
   analysis?: JobAnalysis;
@@ -63,6 +64,7 @@ export enum ViewState {
   KANBAN = 'KANBAN',
   CV_EDITOR = 'CV_EDITOR',
   APPOINTMENTS = 'APPOINTMENTS',
+  ARCHIVE = 'ARCHIVE',
 }
 
 export interface SearchFilters {

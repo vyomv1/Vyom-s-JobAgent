@@ -59,8 +59,8 @@ export const addOrUpdateJob = async (job: Job) => {
   if (!db) return;
   try {
     const docId = job.id.startsWith('manual') ? job.id : getDocId(job);
+    const jobWithId = { ...job, id: docId, updatedAt: Date.now() };
     const docRef = doc(db, "jobs", docId);
-    const jobWithId = { ...job, id: docId };
     await setDoc(docRef, jobWithId, { merge: true });
   } catch (e) {
     console.error("Error adding job:", e);
@@ -141,7 +141,7 @@ export const updateJobStatus = async (jobId: string, status: Job['status']) => {
   if (!db) return;
   try {
     const docRef = doc(db, "jobs", jobId);
-    const updateData: any = { status };
+    const updateData: any = { status, updatedAt: Date.now() };
     if (status === 'applied') {
         updateData.appliedDate = new Date().toLocaleDateString();
     }
@@ -155,7 +155,7 @@ export const saveAnalysis = async (jobId: string, analysis: any) => {
   if (!db) return;
   try {
     const docRef = doc(db, "jobs", jobId);
-    await updateDoc(docRef, { analysis });
+    await updateDoc(docRef, { analysis, updatedAt: Date.now() });
   } catch (e) {
     console.error("Error saving analysis:", e);
   }
@@ -186,7 +186,7 @@ export const saveJobCV = async (jobId: string, content: string) => {
     if (!db) return;
     try {
         const docRef = doc(db, "jobs", jobId);
-        await updateDoc(docRef, { tailoredCv: content });
+        await updateDoc(docRef, { tailoredCv: content, updatedAt: Date.now() });
     } catch (e) {
         console.error("Error saving job CV:", e);
     }

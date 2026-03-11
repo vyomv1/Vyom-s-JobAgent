@@ -25,8 +25,9 @@ const App: React.FC = () => {
   const [isSearchSettingsOpen, setIsSearchSettingsOpen] = useState(false);
   const searchSettingsRef = useRef<HTMLDivElement>(null);
 
-  // Pipeline Search
+  // Pipeline Search & Sort
   const [pipelineSearch, setPipelineSearch] = useState('');
+  const [pipelineSortBy, setPipelineSortBy] = useState<'date' | 'name' | 'score'>('date');
 
   // Filter Configuration (Dropdowns)
   const [isLocationOpen, setIsLocationOpen] = useState(false);
@@ -112,6 +113,33 @@ const App: React.FC = () => {
       return () => unsubscribe();
     }
   }, [isDbConnected]);
+
+  // Auto-archive jobs based on age
+  useEffect(() => {
+    const now = Date.now();
+    const ONE_MONTH_MS = 30 * 24 * 60 * 60 * 1000;
+    const THREE_MONTHS_MS = 90 * 24 * 60 * 60 * 1000;
+
+    allJobs.forEach(job => {
+      if (job.status === 'archived') return;
+
+      const isNew = !job.status || job.status === 'new';
+      const isPipeline = ['saved', 'applied', 'assessment', 'interview', 'offer'].includes(job.status || '');
+
+      if (isNew) {
+        const age = now - (job.scoutedAt || now); // If missing scoutedAt, don't archive immediately
+        if (age > ONE_MONTH_MS) {
+          updateJobStatus(job.id, 'archived');
+        }
+      } else if (isPipeline) {
+        const lastUpdated = job.updatedAt || job.scoutedAt || now; // Fallback to now if missing
+        const age = now - lastUpdated;
+        if (age > THREE_MONTHS_MS) {
+          updateJobStatus(job.id, 'archived');
+        }
+      }
+    });
+  }, [allJobs]);
 
   const addTelemetry = (log: string) => {
       setTelemetryLogs(prev => [...prev.slice(-5), `> ${log}`]);
@@ -335,15 +363,28 @@ const App: React.FC = () => {
   }, [targetJobId, allJobs]);
 
   const pipelineJobs = useMemo(() => {
-      if (!pipelineSearch.trim()) return allJobs;
-      const lowerQ = pipelineSearch.toLowerCase();
-      return allJobs.filter(j => 
-          (j.title || '').toLowerCase().includes(lowerQ) || 
-          (j.company || '').toLowerCase().includes(lowerQ)
-      );
-  }, [allJobs, pipelineSearch]);
+      let filtered = allJobs;
+      if (pipelineSearch.trim()) {
+          const lowerQ = pipelineSearch.toLowerCase();
+          filtered = allJobs.filter(j => 
+              (j.title || '').toLowerCase().includes(lowerQ) || 
+              (j.company || '').toLowerCase().includes(lowerQ)
+          );
+      }
+      return filtered.sort((a, b) => {
+          if (pipelineSortBy === 'name') {
+              const nameA = a.company || a.title || '';
+              const nameB = b.company || b.title || '';
+              return nameA.localeCompare(nameB);
+          } else if (pipelineSortBy === 'score') {
+              return (b.analysis?.score || 0) - (a.analysis?.score || 0);
+          } else {
+              return (b.scoutedAt || 0) - (a.scoutedAt || 0);
+          }
+      });
+  }, [allJobs, pipelineSearch, pipelineSortBy]);
 
-  const isFixedLayout = currentView === ViewState.KANBAN || currentView === ViewState.CV_EDITOR || currentView === ViewState.APPOINTMENTS;
+  const isFixedLayout = currentView === ViewState.KANBAN || currentView === ViewState.CV_EDITOR || currentView === ViewState.APPOINTMENTS || currentView === ViewState.ARCHIVE;
 
   return (
     <div className={`bg-[#F5F5F7] dark:bg-black font-sans transition-colors duration-300 ${isFixedLayout ? 'h-screen overflow-hidden flex flex-col' : 'min-h-screen pb-24 overflow-x-hidden'}`}>
@@ -393,6 +434,7 @@ const App: React.FC = () => {
                          <button onClick={() => { setCurrentView(ViewState.KANBAN); setTargetJobId(null); }} className={`px-4 py-1.5 rounded-md text-[13px] font-medium transition-all focus-visible:ring-2 focus-visible:ring-[#0071e3] focus:outline-none ${currentView === ViewState.KANBAN ? 'bg-white dark:bg-[#2C2C2E] text-black dark:text-white shadow-sm' : 'text-gray-600 dark:text-gray-400 hover:text-black dark:hover:text-white'}`}>Pipeline</button>
                          <button onClick={() => setCurrentView(ViewState.CV_EDITOR)} className={`px-4 py-1.5 rounded-md text-[13px] font-medium transition-all focus-visible:ring-2 focus-visible:ring-[#0071e3] focus:outline-none ${currentView === ViewState.CV_EDITOR ? 'bg-white dark:bg-[#2C2C2E] text-black dark:text-white shadow-sm' : 'text-gray-600 dark:text-gray-400 hover:text-black dark:hover:text-white'}`}>Resume</button>
                          <button onClick={() => setCurrentView(ViewState.APPOINTMENTS)} className={`px-4 py-1.5 rounded-md text-[13px] font-medium transition-all focus-visible:ring-2 focus-visible:ring-[#0071e3] focus:outline-none ${currentView === ViewState.APPOINTMENTS ? 'bg-white dark:bg-[#2C2C2E] text-black dark:text-white shadow-sm' : 'text-gray-600 dark:text-gray-400 hover:text-black dark:hover:text-white'}`}>Appointments</button>
+                         <button onClick={() => setCurrentView(ViewState.ARCHIVE)} className={`px-4 py-1.5 rounded-md text-[13px] font-medium transition-all focus-visible:ring-2 focus-visible:ring-[#0071e3] focus:outline-none ${currentView === ViewState.ARCHIVE ? 'bg-white dark:bg-[#2C2C2E] text-black dark:text-white shadow-sm' : 'text-gray-600 dark:text-gray-400 hover:text-black dark:hover:text-white'}`}>Archive</button>
                      </div>
                  </div>
                  <div className="flex items-center gap-4">
@@ -459,7 +501,7 @@ const App: React.FC = () => {
                         </div>
 
                         {/* CONTROL DECK */}
-                        <div className="sticky top-[64px] z-30 -mx-4 sm:-mx-6 px-4 sm:px-6 py-4 sm:py-5 bg-[#F5F5F7]/95 dark:bg-black/90 backdrop-blur-xl border-y border-black/5 dark:border-white/10 flex items-center justify-between gap-4 mb-8 shadow-sm transition-colors overflow-x-auto no-scrollbar">
+                        <div className="sticky top-[64px] z-30 -mx-4 sm:-mx-6 px-4 sm:px-6 py-4 sm:py-5 bg-[#F5F5F7]/95 dark:bg-black/90 backdrop-blur-xl border-y border-black/5 dark:border-white/10 flex items-center justify-between gap-4 mb-8 shadow-sm transition-colors flex-wrap sm:flex-nowrap">
                             <div className="flex items-center gap-3 shrink-0">
                                 {/* Tab Switcher */}
                                 <div className="flex p-1 bg-gray-200/50 dark:bg-white/10 rounded-lg mr-2">
@@ -583,6 +625,16 @@ const App: React.FC = () => {
                                     )}
                                 </div>
                                 
+                                <select 
+                                    value={pipelineSortBy} 
+                                    onChange={(e) => setPipelineSortBy(e.target.value as any)}
+                                    className="px-3 py-2 bg-white dark:bg-[#1C1C1E] border border-black/5 dark:border-white/10 rounded-full text-xs font-medium outline-none focus:ring-2 focus:ring-[#0071e3] transition-all text-[#1d1d1f] dark:text-white hidden sm:block appearance-none cursor-pointer"
+                                >
+                                    <option value="date">Date added</option>
+                                    <option value="name">Name</option>
+                                    <option value="score">Score</option>
+                                </select>
+
                                 <button onClick={() => setIsAddLinkOpen(true)} className="flex items-center gap-2 px-4 sm:px-5 py-2 rounded-full bg-[#1d1d1f] dark:bg-white text-white dark:text-black text-xs font-bold hover:scale-105 transition-transform shadow-lg shadow-black/5 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#1d1d1f] focus:outline-none">
                                     <Plus size={14} /> <span className="hidden sm:inline">Add Opportunity</span><span className="sm:hidden">Add</span>
                                 </button>
@@ -624,6 +676,42 @@ const App: React.FC = () => {
                 {currentView === ViewState.APPOINTMENTS && (
                     <AppointmentsView jobs={allJobs} onOpenDetail={handleOpenDetail} />
                 )}
+
+                {currentView === ViewState.ARCHIVE && (
+                    <div className="h-full flex flex-col w-full">
+                        <div className="px-4 sm:px-6 py-4 bg-[#F5F5F7]/95 dark:bg-black/90 backdrop-blur-xl border-y border-black/5 dark:border-white/10 flex items-center justify-between gap-4 mb-2 shadow-sm transition-colors flex-none z-30">
+                            <div className="flex items-center gap-4">
+                                <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-[#1d1d1f] dark:text-white">Archive</h1>
+                                <div className="h-6 w-px bg-gray-300 dark:bg-white/10 hidden sm:block"></div>
+                                <span className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider hidden sm:block">{allJobs.filter(j => j.status === 'archived').length} Archived Opportunities</span>
+                            </div>
+                        </div>
+
+                        <div className="flex-1 overflow-y-auto custom-scrollbar w-full px-4 sm:px-6 pb-8">
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 auto-rows-fr pt-4">
+                                {allJobs.filter(j => j.status === 'archived').length === 0 ? (
+                                    <div className="col-span-full py-32 text-center">
+                                        <div className="w-16 h-16 bg-gray-100 dark:bg-[#1C1C1E] rounded-full flex items-center justify-center mx-auto mb-4 text-gray-300 dark:text-gray-600"><Archive size={24}/></div>
+                                        <p className="text-sm font-bold text-gray-500">No archived opportunities.</p>
+                                    </div>
+                                ) : (
+                                    allJobs.filter(j => j.status === 'archived').map(job => (
+                                        <JobCard 
+                                            key={job.id} 
+                                            job={job} 
+                                            onOpenDetail={handleOpenDetail} 
+                                            onToggleStatus={toggleJobStatus} 
+                                            onDelete={handleDelete} 
+                                            isSelectMode={false} 
+                                            isSelected={false} 
+                                            onSelect={() => {}} 
+                                        />
+                                    ))
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                )}
             </div>
         </main>
 
@@ -656,6 +744,13 @@ const App: React.FC = () => {
              >
                 <Calendar size={20} />
                 <span className="text-[10px] font-bold">Plan</span>
+             </button>
+             <button 
+                onClick={() => setCurrentView(ViewState.ARCHIVE)} 
+                className={`flex flex-col items-center gap-1 transition-all p-2 rounded-xl ${currentView === ViewState.ARCHIVE ? 'text-[#0071e3] bg-blue-50/50 dark:bg-blue-900/10' : 'text-gray-400'}`}
+             >
+                <Archive size={20} />
+                <span className="text-[10px] font-bold">Archive</span>
              </button>
         </nav>
 
