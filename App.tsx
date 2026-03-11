@@ -625,19 +625,23 @@ const App: React.FC = () => {
                                     )}
                                 </div>
                                 
-                                <select 
-                                    value={pipelineSortBy} 
-                                    onChange={(e) => setPipelineSortBy(e.target.value as any)}
-                                    className="px-3 py-2 bg-white dark:bg-[#1C1C1E] border border-black/5 dark:border-white/10 rounded-full text-xs font-medium outline-none focus:ring-2 focus:ring-[#0071e3] transition-all text-[#1d1d1f] dark:text-white hidden sm:block appearance-none cursor-pointer"
-                                >
-                                    <option value="date">Date added</option>
-                                    <option value="name">Name</option>
-                                    <option value="score">Score</option>
-                                </select>
-
                                 <button onClick={() => setIsAddLinkOpen(true)} className="flex items-center gap-2 px-4 sm:px-5 py-2 rounded-full bg-[#1d1d1f] dark:bg-white text-white dark:text-black text-xs font-bold hover:scale-105 transition-transform shadow-lg shadow-black/5 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#1d1d1f] focus:outline-none">
                                     <Plus size={14} /> <span className="hidden sm:inline">Add Opportunity</span><span className="sm:hidden">Add</span>
                                 </button>
+
+                                <div className="relative flex items-center justify-center w-9 h-9 rounded-full bg-white dark:bg-[#1C1C1E] border border-black/5 dark:border-white/10 text-gray-500 hover:text-[#0071e3] transition-colors focus-within:ring-2 focus-within:ring-[#0071e3]">
+                                    <Filter size={16} />
+                                    <select 
+                                        value={pipelineSortBy} 
+                                        onChange={(e) => setPipelineSortBy(e.target.value as any)}
+                                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                                        title="Sort Pipeline"
+                                    >
+                                        <option value="date">Sort by: Date added</option>
+                                        <option value="name">Sort by: Name</option>
+                                        <option value="score">Sort by: Score</option>
+                                    </select>
+                                </div>
                             </div>
                         </div>
 
