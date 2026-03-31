@@ -339,7 +339,7 @@ const JobDetailModal: React.FC<JobDetailModalProps> = ({ isOpen, onClose, job, o
                             </div>
 
                             {/* Verdict */}
-                            {analysis ? (
+                            {analysis && analysis.verdict !== "Analysis failed." ? (
                                 <div className="bg-gray-50 dark:bg-white/5 p-5 sm:p-6 rounded-2xl border border-gray-100 dark:border-white/5">
                                     <h4 className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-2 flex items-center gap-2"><Sparkles size={10} className="text-apple-blue"/> Strategic Verdict</h4>
                                     <p className="text-sm sm:text-xl text-apple-text dark:text-white font-medium leading-relaxed">{analysis.verdict}</p>
@@ -349,7 +349,7 @@ const JobDetailModal: React.FC<JobDetailModalProps> = ({ isOpen, onClose, job, o
                                     <div className="flex items-center gap-3">
                                         {isAnalyzing ? <Loader2 className="text-apple-blue animate-spin" size={18} /> : <Sparkles className="text-apple-blue" size={18} />}
                                         <span className="text-xs sm:text-sm font-semibold text-apple-blue">
-                                            {isAnalyzing ? 'Analyzing opportunity potential...' : 'Analysis pending or failed.'}
+                                            {isAnalyzing ? 'Analyzing opportunity potential...' : analysis ? 'Analysis failed. Please try again.' : 'Analysis pending.'}
                                         </span>
                                     </div>
                                     {!isAnalyzing && (

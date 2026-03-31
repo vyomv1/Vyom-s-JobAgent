@@ -192,40 +192,27 @@ export const analyzeJob = async (job: Job): Promise<JobAnalysis> => {
     - matchedKeywords: Array of matching skills/keywords found in the summary.
   `;
 
-  // Reasoning task, gemini-3-flash-preview is suitable here.
-  const response = await retryWithBackoff<GenerateContentResponse>(() => ai.models.generateContent({
-    model: "gemini-3-flash-preview",
-    contents: prompt,
-    config: {
-      systemInstruction: SYSTEM_INSTRUCTION,
-      temperature: 0.1,
-      responseMimeType: "application/json",
-      responseSchema: {
-        type: Type.OBJECT,
-        properties: {
-          score: { type: Type.NUMBER },
-          scoreReasoning: { type: Type.STRING },
-          verdict: { type: Type.STRING },
-          strategy: { type: Type.STRING },
-          isHighValue: { type: Type.BOOLEAN },
-          isCommuteRisk: { type: Type.BOOLEAN },
-          workPattern: { type: Type.STRING },
-          experienceRequired: { type: Type.STRING },
-          salary: { type: Type.STRING },
-          industry: { type: Type.STRING },
-          matchedKeywords: { type: Type.ARRAY, items: { type: Type.STRING } }
-        },
-        required: ["score", "scoreReasoning", "verdict", "strategy", "isHighValue", "isCommuteRisk", "workPattern", "experienceRequired", "salary", "industry", "matchedKeywords"]
-      }
-    }
-  }));
-
   try {
-    return JSON.parse(cleanJsonOutput(response.text || "{}"));
+    const response = await retryWithBackoff<GenerateContentResponse>(() => ai.models.generateContent({
+      model: "gemini-3-flash-preview",
+      contents: prompt,
+      config: {
+        systemInstruction: SYSTEM_INSTRUCTION,
+        temperature: 0.1,
+        responseMimeType: "application/json"
+      }
+    }));
+
+    const parsed = JSON.parse(cleanJsonOutput(response.text || "{}"));
+    if (!parsed.verdict) {
+      throw new Error("Invalid analysis response: missing verdict");
+    }
+    return parsed;
   } catch (e) {
+    console.error("AI Analysis Failed:", e);
     return {
-      score: 0, scoreReasoning: "Analysis failed.", verdict: "Analysis failed.", strategy: "Could not parse AI response.",
-      isHighValue: false, isCommuteRisk: false, matchedKeywords: []
+      score: 0, scoreReasoning: "Analysis failed.", verdict: "Analysis failed.", strategy: "Could not complete AI analysis.",
+      isHighValue: false, isCommuteRisk: false, workPattern: "Unknown", experienceRequired: "Unknown", salary: "Unknown", industry: "Unknown", matchedKeywords: []
     };
   }
 };

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Job, ViewState } from './types';
 import { searchAndParseJobs, analyzeJob, generateApplicationKit, enrichJob } from './services/geminiService';
-import { initFirebase, subscribeToJobs, addOrUpdateJob, updateJobStatus, deleteJob, saveAnalysis, addManualJob } from './services/firebase';
+import { initFirebase, subscribeToJobs, addOrUpdateJob, updateJobStatus, deleteJob, saveAnalysis, addManualJob, clearAllJobs } from './services/firebase';
 import { DEFAULT_FIREBASE_CONFIG } from './constants';
 import JobCard from './components/JobCard';
 import StatsPanel from './components/StatsPanel';
@@ -110,6 +110,14 @@ const App: React.FC = () => {
       const unsubscribe = subscribeToJobs((jobs) => {
         setAllJobs(jobs);
       });
+      
+      // Auto clear jobs once
+      if (!localStorage.getItem('jobs_cleared_once')) {
+        clearAllJobs().then(() => {
+          localStorage.setItem('jobs_cleared_once', 'true');
+        });
+      }
+
       return () => unsubscribe();
     }
   }, [isDbConnected]);

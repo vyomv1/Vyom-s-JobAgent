@@ -1,6 +1,6 @@
 
 import { initializeApp, FirebaseApp, getApp, getApps } from "firebase/app";
-import { getFirestore, collection, doc, setDoc, onSnapshot, updateDoc, deleteDoc, getDoc, Firestore } from "firebase/firestore";
+import { getFirestore, collection, doc, setDoc, onSnapshot, updateDoc, deleteDoc, getDoc, Firestore, getDocs } from "firebase/firestore";
 import { Job } from "../types";
 import { FirebaseConfig } from "../constants";
 
@@ -168,6 +168,18 @@ export const deleteJob = async (jobId: string) => {
     await deleteDoc(docRef);
   } catch (e) {
     console.error("Error deleting job:", e);
+  }
+};
+
+export const clearAllJobs = async () => {
+  if (!db) return;
+  try {
+    const colRef = collection(db, "jobs");
+    const snapshot = await getDocs(colRef);
+    const deletePromises = snapshot.docs.map(d => deleteDoc(d.ref));
+    await Promise.all(deletePromises);
+  } catch (e) {
+    console.error("Error clearing all jobs:", e);
   }
 };
 
